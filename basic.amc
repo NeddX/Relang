@@ -1,0 +1,18 @@
+; section .text
+	call @_main
+
+
+@_main:
+	push %bp
+	mov %bp, %sp
+
+	mov [%bp], #100
+	mov [%bp+#4], #20
+	
+	mov $r0, [%bp+#4]
+	add [%bp], %r0
+	
+	pint [%bp]
+	
+	pop %bp
+	ret
