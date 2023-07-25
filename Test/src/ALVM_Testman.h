@@ -15,10 +15,10 @@ namespace testman::alvm {
 
         std::vector<Instruction> code =
         {
-            {.opcode = OpCode::Mov, .reg1 = RegType::R0, .reg2 = RegType::Sp},
-            {.opcode = OpCode::Db, .bytes = std::to_bytes("it workin\n")},
-            {.opcode = OpCode::PrintStr, .reg1 = RegType::R0},
-            {.opcode = OpCode::End}
+        Instruction{.opcode = OpCode::Mov, .reg1 = {RegType::R0}, .reg2 = {RegType::Sp}},
+                Instruction{.opcode = OpCode::Db, .bytes = std::to_bytes("it workin\n")},
+                Instruction{.opcode = OpCode::PrintStr, .reg1 = {RegType::R0}},
+                Instruction{.opcode = OpCode::End}
         };
 
         r.Run(code, result);

@@ -29,7 +29,7 @@ int main(int argc, const char* argv[])
     //std::cout << "Testing ALVM...\n";
     //TestAndExpect(&testman::alvm::SimplePrint, "it be workin!");
 
-    std::cout << "\nTesting ALA...\n";
+    //std::cout << "\nTesting ALA...\n";
     std::ifstream fs;
     fs.open("./basic.amc");
 
@@ -39,15 +39,94 @@ int main(int argc, const char* argv[])
         src = std::string(std::istreambuf_iterator<char>(fs), std::istreambuf_iterator<char>());
         fs.close();
     }
-    else std::cout << "couldnt open file\n";
+    else
+    {
+        std::cout << "Error: Couldn't open file\n";
+        std::exit(-1);
+    }
 
     rlang::rmc::TokenList tk_list = rlang::rmc::Lexer::Start(src);
     std::vector<rlang::alvm::Instruction> compiled_code = rlang::rmc::Compiler::Compile(tk_list);
 
+    std::cout << "Compilation finished.\n";
+    if (argc > 1 && std::strcmp(argv[1], "--dump-intermediate") == 0)
+    {
+        std::cout << "Dumping intermediate code...\n\n";
+        for (int i = 0; const auto& inst : compiled_code)
+        {
+            std::cout << i++ << "\t" << rlang::alvm::Instruction::InstructionStr[(std::size_t)inst.opcode];
+
+            if (inst.reg1.type == rlang::alvm::RegType::Nul)
+            {
+                std::cout << " #" << inst.imm32;
+            }
+            else
+            {
+                if (inst.reg1.ptr)
+                {
+                    std::cout << " ";
+                    switch (inst.reg1.size)
+                    {
+                        case 8:
+                            std::cout << "byte";
+                            break;
+                        case 16:
+                            std::cout << "word";
+                            break;
+                        case 32:
+                            std::cout << "dword";
+                            break;
+                    }
+                    std::cout << " [%" << rlang::alvm::Register::RegisterStr[(std::size_t)inst.reg1.type] << "]";
+                }
+                else
+                {
+                    std::cout << " %" << rlang::alvm::Register::RegisterStr[(std::size_t)inst.reg1.type];
+                }
+
+                if (inst.reg2.type != rlang::alvm::RegType::Nul)
+                {
+                    if (inst.reg2.ptr)
+                    {
+                            std::cout << ", ";
+                            switch (inst.reg1.size)
+                            {
+                                case 8:
+                                    std::cout << "byte";
+                                    break;
+                                case 16:
+                                    std::cout << "word";
+                                    break;
+                                case 32:
+                                    std::cout << "dword";
+                                    break;
+                            }
+                            std::cout << " [%" << rlang::alvm::Register::RegisterStr[(std::size_t)inst.reg2.type] << "]";
+                    }
+                    else
+                    {
+                        std::cout << ", %" << rlang::alvm::Register::RegisterStr[(std::size_t)inst.reg2.type];
+                    }
+                }
+                else
+                {
+                    if (inst.opcode != rlang::alvm::OpCode::Push &&
+                        inst.opcode != rlang::alvm::OpCode::End &&
+                        inst.opcode != rlang::alvm::OpCode::PrintStr &&
+                        inst.opcode != rlang::alvm::OpCode::PrintInt &&
+                        inst.opcode != rlang::alvm::OpCode::Inc &&
+                        inst.opcode != rlang::alvm::OpCode::Dec) std::cout << ", #" << inst.imm32;
+                }
+            }
+            std::cout << "\n";
+        }
+    }
+
+    std::cout << std::endl;
     rlang::alvm::ALVM r;
     std::int32_t result = 0;
     r.Run(compiled_code, result); // mr synctactical shugar
-    std::cout << "\nExited with code: " << result << std::endl;
+    std::cout << "Exited with code: " << result << std::endl;
 
     return 0;
 }

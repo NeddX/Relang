@@ -1,5 +1,5 @@
-#ifndef ALVM_ALVM_RUNTIME_H
-#define ALVM_ALVM_RUNTIME_H
+#ifndef ALVM_RUNTIME_H
+#define ALVM_RUNTIME_H
 
 #include <sdafx.h>
 
@@ -8,7 +8,7 @@
 #include "Instruction.h"
 
 namespace rlang::alvm {
-	constexpr auto ALVM_STACK_SIZE = 50;//1024 * 1024 * 2;
+	constexpr auto STACK_SIZE = 30;//1024 * 1024 * 2;
 
 	class ALVM
 	{
@@ -19,8 +19,8 @@ namespace rlang::alvm {
 		Instruction* m_Pc = nullptr;
 		Registers m_Registers;
 		size_t m_Size = 0;
-		ByteBuffer<ALVM_STACK_SIZE> m_Stack;
-		//std::int32_t m_BaseIndex = 0;
+		ByteBuffer m_Stack;
+		ByteBuffer m_Data;
 		const std::vector<InstructionHandler> m_Instructions =
 		{
 			&ALVM::End,
@@ -30,24 +30,28 @@ namespace rlang::alvm {
 			&ALVM::Sub,
 			&ALVM::Mul,
 			&ALVM::Div,
+			&ALVM::Increment,
+			&ALVM::Decrement,
 			&ALVM::PrintInt,
 			&ALVM::PrintStr,
 			&ALVM::CmpIntLessThan,
 			&ALVM::CmpIntEqualTo,
+            &ALVM::Cmp,
 			&ALVM::Move,
 			&ALVM::Jump,
 			&ALVM::ConditionalJump,
 			&ALVM::ConditionalNotJump,
-			&ALVM::Call,
-			&ALVM::Return,
 			&ALVM::Db,
 			&ALVM::Call,
 			&ALVM::Return,
+			&ALVM::Malloc,
+			&ALVM::Free,
 			&ALVM::Nop
 		};
 	public:
-		ALVM() :
-			m_Stack((size_t&)m_Registers[RegType::Sp])
+		ALVM(const std::vector<Instruction>& bytecode, const std::vector<std::uint8_t>& data, std::int32_t result) :
+			m_Stack(STACK_SIZE, (size_t&)m_Registers[RegType::Sp]),
+			m_Data(data)
 		{
 
 		}
@@ -64,10 +68,13 @@ namespace rlang::alvm {
 		void Sub();
 		void Mul();
 		void Div();
+		void Increment();
+		void Decrement();
 		void PrintInt();
 		void PrintStr();
 		void CmpIntLessThan();
 		void CmpIntEqualTo();
+        void Cmp();
 		void Move();
 		void Jump();
 		void ConditionalJump();
@@ -75,7 +82,9 @@ namespace rlang::alvm {
 		void Db();
 		void Call();
 		void Return();
+		void Malloc();
+		void Free();
 	};
 }
 
-#endif // ALVM_ALVM_RUNTIME_H
+#endif // ALVM_RUNTIME_H

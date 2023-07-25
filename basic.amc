@@ -1,18 +1,26 @@
+; section .data
+;	db		NL					"\n"
+	db		STRMEN				"ze streng!!!!!!"
+;	db		STRLOL				"ze string format...."
+;	db		__const_str_#0		"Pointer Result: "
+
 ; section .text
 	call @_main
-
+	
+	mov %r0, #1	
+	end	
 
 @_main:
 	push %bp
 	mov %bp, %sp
 
-	mov [%bp], #100
-	mov [%bp+#4], #20
-	
-	mov $r0, [%bp+#4]
-	add [%bp], %r0
-	
-	pint [%bp]
-	
+	pstr STRMEN
+
+	;malloc %r0
+	;pstr __const_str_#0
+	;pint %r0
+	;free %r0
+	;pstr NL
+
 	pop %bp
 	ret

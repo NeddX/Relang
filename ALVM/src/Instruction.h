@@ -1,5 +1,5 @@
-#ifndef ALVM_ALVM_INSTRUCTION_H
-#define ALVM_ALVM_INSTRUCTION_H
+#ifndef ALVM_INSTRUCTION_H
+#define ALVM_INSTRUCTION_H
 
 #include <sdafx.h>
 
@@ -15,10 +15,13 @@ namespace rlang::alvm {
         Sub,
         Mul,
         Div,
+        Inc,
+        Dec,
         PrintInt,
         PrintStr,
         CmpIntLT,
         CmpIntET,
+        Cmp,
         Mov,
         Jump,
         CJump,
@@ -26,6 +29,8 @@ namespace rlang::alvm {
         Db,
         Call,
         Return,
+        Malloc,
+        Free,
 
         Nop
     };
@@ -33,7 +38,7 @@ namespace rlang::alvm {
     struct Instruction
     {
         OpCode opcode = OpCode::Nop;
-        std::int32_t imm32 = 0;
+        std::uint32_t imm32 = 0;
         Register reg1 = { RegType::Nul, false };
         Register reg2 = { RegType::Nul, false };
         std::int8_t size = 32; 
@@ -42,27 +47,32 @@ namespace rlang::alvm {
     public:
         inline static const std::vector<std::string> InstructionStr =
         {
-            "End",
-            "Push",
-            "Pop",
-            "Add",
-            "Sub",
-            "Mul",
-            "Div",
-            "PInt",
-            "PStr",
-            "CIGT",
-            "CIET",
-            "Mov",
-            "Jump",
-            "CJmp",
-            "CNJp",
-            "Db",
-            "Call",
-            "Ret",
-            "Nop"
+            "end",
+            "push",
+            "pop",
+            "add",
+            "sub",
+            "mul",
+            "div",
+            "inc",
+            "dec",
+            "pint",
+            "pstr",
+            "cigt",
+            "ciet",
+            "cmp",
+            "mov",
+            "jmp",
+            "cjmp",
+            "cjp",
+            "db",
+            "call",
+            "ret",
+            "malloc",
+            "free",
+            "nop"
         };
     };
 }
 
-#endif // ALVM_ALVM_INSTRUCTION_H
+#endif // ALVM_INSTRUCTION_H

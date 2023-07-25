@@ -1,5 +1,5 @@
-#ifndef ALVM_ALVM_BYTE_BUFFER_H
-#define ALVM_ALVM_BYTE_BUFFER_H
+#ifndef ALVM_BYTE_BUFFER_H
+#define ALVM_BYTE_BUFFER_H
 
 #include <sdafx.h>
 
@@ -8,15 +8,17 @@ namespace rlang::alvm {
 	class ByteBuffer
 	{
 	private:
-		std::array<std::uint8_t, Size> m_Buffer;
-		std::size_t& m_StackPointer;
+		std::vector<std::uint8_t> m_Buffer;
+		std::uintptr_t& m_StackPointer;
 
 	public:
-		ByteBuffer(std::size_t& stackPointer) :
+		ByteBuffer(std::uintptr_t& stackPointer) :
 			m_StackPointer(stackPointer)
 		{
-			m_StackPointer = m_Buffer.size() - 1;
-			std::fill(m_Buffer.begin(), m_Buffer.end(), 0);
+			m_Buffer.resize(Size);
+			m_StackPointer = (std::uintptr_t)m_Buffer.data() + Size - 1;
+			//m_StackPointer = Size - 1;
+			//std::fill(m_Buffer.begin(), m_Buffer.end(), 0);
 		}
 
 	public:
@@ -43,12 +45,14 @@ namespace rlang::alvm {
 		inline bool InsertBack(const Iterator begin, const Iterator end)
 		{
 			std::size_t size = std::distance(begin, end);
-			if (m_StackPointer == 0 || m_StackPointer - size < 0)
+
+			if (m_StackPointer >= m_StackPointer + m_Buffer.size() || m_StackPointer < (std::uintptr_t)m_Buffer.data())
 				return false;
 
 			for (auto i = 0; i < size; ++i)
 			{
-				m_Buffer[m_StackPointer - i] = *(begin + i);
+				*(std::uint8_t*)(m_StackPointer - i) = *(begin + i);
+				//m_Buffer[m_Buffer.size() - 1 - i] = *(begin + i);
 			}
 
 			return true;
@@ -57,8 +61,8 @@ namespace rlang::alvm {
 	public:
 		void Push(std::uint8_t data)
 		{
-			m_Buffer[m_StackPointer--] = data;
-			//m_Buffer.push_back(data);
+			*(std::uint8_t*)(m_StackPointer--) = data;
+			//m_Buffer[m_StackPointer--] = data;
 		}
 		void Push16(std::uint16_t data)
 		{
@@ -73,9 +77,8 @@ namespace rlang::alvm {
 
 		std::uint8_t Pop()
 		{
-			//std::uint8_t data = m_Buffer.back();
-			//m_Buffer.pop_back();
-			return m_Buffer[m_StackPointer++];
+			return *(std::uint8_t*)++m_StackPointer;
+			//return m_Buffer[++m_StackPointer];
 		}
 		std::uint16_t Pop16()
 		{
@@ -83,25 +86,13 @@ namespace rlang::alvm {
 		}
 		std::uint32_t Pop32()
 		{
-			return (Pop32() << 16) | (std::uint16_t)Pop32();
-		}
-
-		std::uint8_t Read()
-		{
-			return m_Buffer.back();
-		}
-		std::uint16_t Read16()
-		{
-			return ((std::uint16_t)Read() << 8) | Read();
-		}
-		std::uint32_t Read32()
-		{
-			return ((std::uint32_t)Read16() << 16) | Read16();
-		}
+			return (Pop16() << 16) | (std::uint16_t)Pop16();
+ 		}
 
 		void WriteAt(std::size_t address, std::uint8_t data)
 		{
-			m_Buffer[address] = data;
+			*(std::uint8_t*)address = data;
+			//m_Buffer[address] = data;
 		}
 		void WriteAt16(std::size_t address, std::uint16_t data)
 		{
@@ -116,7 +107,8 @@ namespace rlang::alvm {
 
         std::uint8_t ReadFrom(std::size_t address)
 		{
-			return m_Buffer[address];
+			return *(std::uint8_t*)address;
+			//return m_Buffer[address];
 		}
 		std::uint16_t ReadFrom16(std::size_t address)
 		{
@@ -129,4 +121,4 @@ namespace rlang::alvm {
 	};
 }
 
-#endif // ALVM_ALVM_BYTE_BUFFER_H
+#endif // ALVM_BYTE_BUFFER_H
