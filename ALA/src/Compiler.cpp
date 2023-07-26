@@ -1,5 +1,6 @@
 #include "Compiler.h"
 #include "Lexer.h"
+#include "Utils.h"
 
 #ifdef __clang__
 #define DISABLE_ENUM_WARNING_BEGIN _Pragma("clang diagnostic push") \
@@ -13,19 +14,23 @@
 DISABLE_ENUM_WARNING_BEGIN
 
 namespace rlang::rmc {
-    std::unordered_map<std::string, ConstInfo> Compiler::m_ConstantNameTable;
+    std::unordered_map<std::string, DataInfo> Compiler::m_DataNameTable;
     std::unordered_map<std::string, std::pair<std::size_t, std::unordered_map<std::string, std::size_t>>> Compiler::m_LabelAddressMap;
     std::vector<alvm::Instruction> Compiler::m_CompiledCode;
     std::vector<alvm::Instruction> Compiler::m_InstEpilogue;
+    std::vector<std::uint8_t> Compiler::m_DataSection;
     std::size_t Compiler::m_StackSize = 0;
-    std::size_t Compiler::m_ConstantCount = 0;
+    std::size_t Compiler::m_DataCount = 0;
+    std::string Compiler::m_CurrentSection = "";
 
     void Compiler::Cleanup()
     {
         m_CompiledCode.clear();
         m_InstEpilogue.clear();
-        m_ConstantNameTable.clear();
+        m_DataNameTable.clear();
         m_LabelAddressMap.clear();
+        m_DataSection.clear();
+        m_CurrentSection = "";
     }
 
     void Compiler::Preproccess(const TokenList& tokens)
@@ -33,8 +38,26 @@ namespace rlang::rmc {
         // Pre proccess the source code.
         std::size_t inst_count = 0;
         std::string last_label_definition;
+        bool data_section = false;
         for (auto i = 0; i < tokens.size(); ++i)
         {
+            if (!data_section)
+            {
+                if (tokens[i].type == TokenType::Operator &&
+                    tokens[i].text == "." &&
+                    tokens[i + 1].type == TokenType::Identifier &&
+                    tokens[i + 1].text == "section" &&
+                    tokens[i + 2].type == TokenType::Identifier &&
+                    tokens[i + 2].text == "code" &&
+                    tokens[i + 3].type == TokenType::Operator &&
+                    tokens[i + 3].text == ":")
+                {
+                    data_section = true;
+                    i += 4;
+                }
+                continue;
+            }
+
             if (i > 0 && tokens[i].line > tokens[i - 1].line)
                 inst_count++;
 
@@ -63,7 +86,7 @@ namespace rlang::rmc {
         }
     }
 
-    std::vector<alvm::Instruction> Compiler::Compile(const TokenList& tokens)
+    std::pair<std::vector<alvm::Instruction>, std::vector<std::uint8_t>> Compiler::Compile(const TokenList& tokens)
     {
         Cleanup();
         Preproccess(tokens);
@@ -79,25 +102,105 @@ namespace rlang::rmc {
             {
                 case TokenType::Instruction:
                 {
+                    if (!m_CurrentSection.empty())
+                    {
+                        if (m_CurrentSection == "data")
+                        {
+                            std::string inst = utils::string::ToLowerCopy(tokens[i].text);
+                            if (inst == "str")
+                            {
+                                if (tokens[i + 1].type == TokenType::Identifier)
+                                {
+                                    if (tokens[i + 2].type == TokenType::StringLiteral)
+                                    {
+                                        m_DataNameTable[tokens[i + 1].text] = { .addr = m_DataSection.size(), .type = TokenType::StringLiteral };
+                                        m_DataSection.insert(m_DataSection.end(), tokens[i + 2].text.begin(), tokens[i + 2].text.end());
+                                        m_DataSection.push_back(0); // Null term
+                                        m_DataNameTable[tokens[i + 1].text].size = m_DataSection.size() - m_DataNameTable[tokens[i + 1].text].addr;
+                                    }
+                                    else
+                                    {
+                                        std::cerr << "Compile Error @ line (" << tokens[i + 2].line << ", " << tokens[i + 2].cur << "): "
+                                                  << "Expected a String after '" << tokens[i + 1].text << "'\n";
+                                        std::exit(-1);
+                                    }
+                                }
+                                else
+                                {
+                                    std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): "
+                                              << "Expected an Identifier after str.\n";
+                                    std::exit(-1);
+                                }
+                                i += 2;
+                            }
+                            else if (inst == "const")
+                            {
+                                if (tokens[i + 1].type == TokenType::Identifier)
+                                {
+                                    if (tokens[i + 2].type == TokenType::Number)
+                                    {
+                                        m_DataNameTable[tokens[i + 1].text] = { .size = 4, .value = (std::uint32_t)std::stoul(tokens[i + 2].text), .type = TokenType::Number };
+                                    }
+                                    else
+                                    {
+                                        std::cerr << "Compile Error @ line (" << tokens[i + 2].line << ", " << tokens[i + 2].cur << "): "
+                                                  << "Expected an Integer after '" << tokens[i + 1].text << "'\n";
+                                        std::exit(-1);
+                                    }
+                                }
+                                else
+                                {
+                                    std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): "
+                                              << "Expected an Identifier after const.\n";
+                                    std::exit(-1);
+                                }
+                                i += 2;
+                            }
+                            else if (inst == "var")
+                            {
+                                if (tokens[i + 1].type == TokenType::Identifier)
+                                {
+                                    if (tokens[i + 2].type == TokenType::Number)
+                                    {
+                                        DataInfo inf = { .addr = m_DataSection.size(), .size = 4, .value = m_DataSection.size(), .type = TokenType::Number };
+                                        m_DataNameTable[tokens[i + 1].text] = inf;
+                                        m_DataSection.resize(m_DataSection.size() + 4);
+                                        *(std::uint32_t*)(m_DataSection.data() + inf.addr) = (std::uint32_t)std::stoul(tokens[i + 2].text);
+                                    }
+                                    else
+                                    {
+                                        std::cerr << "Compile Error @ line (" << tokens[i + 2].line << ", " << tokens[i + 2].cur << "): "
+                                                  << "Expected an Integer after '" << tokens[i + 1].text << "'\n";
+                                        std::exit(-1);
+                                    }
+                                }
+                                else
+                                {
+                                    std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): "
+                                              << "Expected an Identifier after const.\n";
+                                    std::exit(-1);
+                                }
+                                i += 2;
+                            }
+                            else
+                            {
+                                std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): Unknown instruction '"
+                                          << tokens[i].text << "' in " << m_CurrentSection << " section.\n";
+                                std::exit(-1);
+                            }
+                            break;
+                        }
+                    }
+                    else if (m_CurrentSection != "code")
+                    {
+                        std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): No section defined.\n";
+                        std::exit(-1);
+                    }
+
                     if (i > 0)
                     {
-                        // Check for constant instruction (if that makes sense).
-                        switch (current_instruction.opcode)
-                        {
-                            // We only have one of those and that's db.
-                            // It is a real instruction but it's also a syntactical shugar intended to make things easier.
-                            case alvm::OpCode::Db:
-                                if (!m_CompiledCode.empty())
-                                    m_CompiledCode.insert(m_CompiledCode.begin() + m_ConstantCount - 1, current_instruction);
-                                else
-                                    m_CompiledCode.push_back(current_instruction);
-                                goto instruction_epilogue;
-                                break;
-                        }
-
-                        // Quick and lazy fix.
-                        if (current_instruction.opcode != alvm::OpCode::Nop) m_CompiledCode.push_back(current_instruction);
-instruction_epilogue:
+                        if (current_instruction.opcode != alvm::OpCode::Nop)
+                            m_CompiledCode.push_back(current_instruction);
                         if (!m_InstEpilogue.empty())
                         {
                             m_CompiledCode.insert(m_CompiledCode.end(), m_InstEpilogue.begin(), m_InstEpilogue.end());
@@ -109,45 +212,6 @@ instruction_epilogue:
                     bit_size = 32;
 
                     current_instruction.opcode = GetInst(tokens[i].text);
-
-                    // Might be a syntactical insutrction.
-                    if (current_instruction.opcode == alvm::OpCode::Nop)
-                    {
-                        if (tokens[i].text == "equ")
-                        {
-                            if (tokens[i + 1].type == TokenType::Identifier)
-                            {
-                                if (tokens[i + 2].type == TokenType::Number)
-                                {
-                                    m_ConstantNameTable[tokens[i + 1].text] =
-                                    {
-                                        .size = 4,
-                                        .value = (std::uint32_t)std::stoul(tokens[i + 2].text),
-                                        .type = TokenType::Number
-                                    };
-                                    i += 3;
-                                }
-                                else
-                                {
-                                    std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "):"
-                                              << "Expected a number literal after  '" << tokens[i + 1].text << "'.\n";
-                                    std::exit(-1);
-                                }
-                            }
-                            else
-                            {
-                                std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "):"
-                                          << "Expected an identifier after instruction.\n";
-                                std::exit(-1);
-                            }
-                        }
-                        else
-                        {
-                            std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): Unknown Instruction '"
-                                      << tokens[i].text << "'.\n";
-                            std::exit(-1);
-                        }
-                    }
                     break;
                 }
                 case TokenType::Operator:
@@ -270,19 +334,62 @@ instruction_epilogue:
                             tokens[i + 2].text != ":")
                         {
                             current_instruction.imm32 = (std::uint32_t)m_LabelAddressMap[tokens[i + 1].text].first;
+                            i++;
                         }
                         else
                         {
                             current_label = tokens[i + 1].text;
+                            i += 2;
                         }
 
                     }
                     else if (tokens[i].text == ".")
                     {
                         if (tokens[i + 1].type == TokenType::Identifier &&
+                            tokens[i + 1].text == "section" &&
+                            tokens[i + 2].type == TokenType::Identifier &&
+                            tokens[i + 3].type == TokenType::Operator &&
+                            tokens[i + 3].text == ":")
+                        {
+
+                            // Section definition
+                            if (tokens[i + 2].text == "data" || tokens[i + 2].text == "code")
+                            {
+                                m_CurrentSection = tokens[i + 2].text;
+                                i += 3;
+                            }
+                            else
+                            {
+                                std::cerr << "Compile Error @ line (" << tokens[i + 2].line << ", " << tokens[i + 2].cur
+                                          << "): Unknown section '" << tokens[i + 2].text << "'.\n";
+                                std::exit(-1);
+                            }
+                        }
+                        else if (tokens[i + 1].type == TokenType::Identifier &&
                             tokens[i + 2].type != TokenType::Operator && tokens[i + 2].text != ":")
                         {
-                            current_instruction.imm32 = (std::uint32_t)m_LabelAddressMap[current_label].second[tokens[i + 1].text];
+                            // Possible local label reference
+                            if  (m_LabelAddressMap.find(current_label) != m_LabelAddressMap.end() &&
+                                 m_LabelAddressMap[current_label].second.find(tokens[i + 1].text) !=
+                                 m_LabelAddressMap[current_label].second.end())
+                            {
+                                current_instruction.imm32 = (std::uint32_t)m_LabelAddressMap[current_label].second[tokens[i + 1].text];
+                            }
+                            else
+                            {
+                                if (!current_label.empty())
+                                {
+                                    std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): Local label '"
+                                              << tokens[i + 1].text << "' in parent label '" << current_label << "' is undefined.\n";
+                                }
+                                else
+                                {
+                                    std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): "
+                                              << "Attempted to reference a local label in an unexistent parent label.\n";
+                                }
+                                std::exit(-1);
+                            }
+
                         }
                         else if (m_LabelAddressMap[current_label].second.find(tokens[i + 1].text) != m_LabelAddressMap[current_label].second.end())
                         {
@@ -321,7 +428,7 @@ instruction_epilogue:
                     {
                         bit_size = 32;
                     }
-                    else if (auto it = m_ConstantNameTable.find(tokens[i].text); it != m_ConstantNameTable.end())
+                    else if (auto it = m_DataNameTable.find(tokens[i].text); it != m_DataNameTable.end())
                     {
                         // I don't know what I wrote, this is so bug prone and I can feel it.
                         // I don't want to debug.
@@ -332,22 +439,11 @@ instruction_epilogue:
                                 {
                                     if (it->second.type == TokenType::StringLiteral)
                                     {
-                                        if (ptr)
-                                        {
-                                            m_CompiledCode.push_back(alvm::Instruction { .opcode = alvm::OpCode::Push, .reg1 = {alvm::RegType::R0}});
-                                            m_CompiledCode.push_back(alvm::Instruction { .opcode = alvm::OpCode::Mov, .imm32 = alvm::STACK_SIZE - 1, .reg1 = {alvm::RegType::R0}});
-                                            m_CompiledCode.push_back(alvm::Instruction { .opcode = alvm::OpCode::Sub, .imm32 = it->second.addr, .reg1 = { alvm::RegType::R0 } });
-                                            current_instruction.reg1 = {alvm::RegType::R0, true};
-                                            m_InstEpilogue.push_back(alvm::Instruction {.opcode = alvm::OpCode::Pop, .reg1 = {alvm::RegType::R0}});
-                                        }
-                                        else
-                                        {
-                                            m_CompiledCode.push_back(alvm::Instruction { .opcode = alvm::OpCode::Push, .reg1 = {alvm::RegType::R0}});
-                                            m_CompiledCode.push_back(alvm::Instruction { .opcode = alvm::OpCode::Mov, .imm32 = alvm::STACK_SIZE - 1, .reg1 = {alvm::RegType::R0}});
-                                            m_CompiledCode.push_back(alvm::Instruction { .opcode = alvm::OpCode::Sub, .imm32 =it->second.addr, .reg1 = { alvm::RegType::R0 }});
-                                            current_instruction.reg1 = {alvm::RegType::R0};
-                                            m_InstEpilogue.push_back(alvm::Instruction {.opcode = alvm::OpCode::Pop, .reg1 = {alvm::RegType::R0}});
-                                        }
+                                        m_CompiledCode.push_back(alvm::Instruction { .opcode = alvm::OpCode::Push, .reg1 = { alvm::RegType::R0 } });
+                                        m_CompiledCode.push_back(alvm::Instruction { .opcode = alvm::OpCode::Mov, .imm32 = it->second.addr, .reg1 = { alvm::RegType::R0 } });
+                                        m_CompiledCode.push_back(alvm::Instruction { .opcode = alvm::OpCode::Add, .reg1 = { alvm::RegType::R0 }, .reg2 = { alvm::RegType::DS }});
+                                        current_instruction.reg1 = { alvm::RegType::R0 };
+                                        m_InstEpilogue.push_back(alvm::Instruction { .opcode = alvm::OpCode::Pop, .reg1 = { alvm::RegType::R0 } });
                                     }
                                     else
                                     {
@@ -377,17 +473,10 @@ instruction_epilogue:
                                 {
                                     if (it->second.type == TokenType::Number)
                                     {
-                                        if (ptr)
-                                        {
-                                            m_CompiledCode.push_back(alvm::Instruction { .opcode = alvm::OpCode::Push, .reg1 = {alvm::RegType::R0}});
-                                            m_CompiledCode.push_back(alvm::Instruction { .opcode = alvm::OpCode::Mov, .imm32 = it->second.value, .reg1 = {alvm::RegType::R0}});
-                                            current_instruction.reg1 = { alvm::RegType::R0, true };
-                                            m_InstEpilogue.push_back(alvm::Instruction { .opcode = alvm::OpCode::Pop, .reg1 = {alvm::RegType::R0}});
-                                        }
-                                        else
-                                        {
-                                            current_instruction.imm32 = it->second.value;
-                                        }
+                                        m_CompiledCode.push_back(alvm::Instruction{.opcode = alvm::OpCode::Push, .reg1 = {alvm::RegType::R0}});
+                                        m_CompiledCode.push_back(alvm::Instruction{.opcode = alvm::OpCode::Mov, .imm32 = it->second.value, .reg1 = {alvm::RegType::R0}});
+                                        current_instruction.reg1 = {alvm::RegType::R0, ptr};
+                                        m_InstEpilogue.push_back(alvm::Instruction{.opcode = alvm::OpCode::Pop, .reg1 = {alvm::RegType::R0}});
                                     }
                                     else
                                     {
@@ -449,37 +538,12 @@ instruction_epilogue:
                                 break;
                         }
                     }
-
-                    switch (current_instruction.opcode)
+                    else
                     {
-                        case alvm::OpCode::Db:
-                        {
-                            switch (tokens[i + 1].type)
-                            {
-                                case TokenType::StringLiteral:
-                                {
-                                    std::vector<std::int8_t> str_bytes = utils::string::ToBytes(tokens[i + 1].text);
-                                    str_bytes.push_back(0); // Null term
-                                    current_instruction.bytes.reserve(current_instruction.bytes.size() + str_bytes.size());
-                                    current_instruction.bytes.insert(
-                                        current_instruction.bytes.end(), 
-                                        str_bytes.begin(), 
-                                        str_bytes.end()
-                                    );
-                                    m_ConstantNameTable[tokens[i].text] = { m_StackSize, str_bytes.size(), 0, TokenType::StringLiteral };
-                                    m_StackSize += str_bytes.size();
-                                    m_ConstantCount++;
-                                    i++;
-                                    break;
-                                }
-                                case TokenType::Whitespace:
-                                case TokenType::Comment:
-                                case TokenType::Identifier:
-                                default:
-                                    break;
-                            }
-                            break;
-                        }
+                        std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): "
+                                  << "Undefined Identifier '" << tokens[i].text << "'\n"
+                                  << std::endl;
+                        std::exit(-1);
                     }
                     break;
                 }
@@ -494,7 +558,7 @@ instruction_epilogue:
         }
 
         m_CompiledCode.push_back(alvm::Instruction { .opcode = alvm::OpCode::End });
-        return m_CompiledCode;
+        return { m_CompiledCode, m_DataSection };
     }
 
     alvm::OpCode Compiler::GetInst(std::string inst)

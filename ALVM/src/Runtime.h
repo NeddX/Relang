@@ -8,7 +8,7 @@
 #include "Instruction.h"
 
 namespace rlang::alvm {
-	constexpr auto STACK_SIZE = 30;//1024 * 1024 * 2;
+	constexpr int STACK_SIZE = 30;//1024 * 1024 * 2;
 
 	class ALVM
 	{
@@ -17,10 +17,9 @@ namespace rlang::alvm {
 	private:
 		Instruction* m_Bytecode = nullptr;
 		Instruction* m_Pc = nullptr;
+		std::vector<std::uint8_t> m_Stack;
 		Registers m_Registers;
-		size_t m_Size = 0;
-		ByteBuffer m_Stack;
-		ByteBuffer m_Data;
+		std::uint32_t& m_Sp;
 		const std::vector<InstructionHandler> m_Instructions =
 		{
 			&ALVM::End,
@@ -34,30 +33,23 @@ namespace rlang::alvm {
 			&ALVM::Decrement,
 			&ALVM::PrintInt,
 			&ALVM::PrintStr,
-			&ALVM::CmpIntLessThan,
-			&ALVM::CmpIntEqualTo,
             &ALVM::Cmp,
 			&ALVM::Move,
 			&ALVM::Jump,
 			&ALVM::ConditionalJump,
 			&ALVM::ConditionalNotJump,
-			&ALVM::Db,
 			&ALVM::Call,
 			&ALVM::Return,
 			&ALVM::Malloc,
 			&ALVM::Free,
+
 			&ALVM::Nop
-		};
+	};
 	public:
-		ALVM(const std::vector<Instruction>& bytecode, const std::vector<std::uint8_t>& data, std::int32_t result) :
-			m_Stack(STACK_SIZE, (size_t&)m_Registers[RegType::Sp]),
-			m_Data(data)
-		{
-
-		}
+		ALVM(const std::vector<std::uint8_t>& data);
 
 	public:
-		void Run(const std::vector<Instruction>& bytecode, std::int32_t& result);
+		void Run(const std::vector<Instruction>& code, std::int32_t& result);
 
 	private:
 		void Nop();
@@ -72,14 +64,11 @@ namespace rlang::alvm {
 		void Decrement();
 		void PrintInt();
 		void PrintStr();
-		void CmpIntLessThan();
-		void CmpIntEqualTo();
         void Cmp();
 		void Move();
 		void Jump();
 		void ConditionalJump();
 		void ConditionalNotJump();
-		void Db();
 		void Call();
 		void Return();
 		void Malloc();

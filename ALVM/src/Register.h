@@ -25,17 +25,24 @@ namespace rlang::alvm {
 		R15,
 
 		// Reserved
-		Bp,		// Base pointer
-		Sp,		// Stack Fr
-		pointer,		// Function return pointer
+		Bp,
+		Sp,
 
 		// Flags
-		CF,		// Conditional flag, gets modified by Ciet, Cigt instructions.
+		CF,
 		ZF,
 		OF,
 		SF,
 		PF,
 		AF,
+
+		// Segement pointers
+		CS,
+		SS,
+		DS,
+		ES,
+		FS,
+		GS,
 
 		Nul
 	};
@@ -66,15 +73,24 @@ namespace rlang::alvm {
 			"r13",
 			"r14",
 			"r15",
+
 			"bp",
 			"sp",
-			"fr",
+
 			"cf",
 			"zf",
 			"of",
 			"sf",
 			"pf",
 			"af",
+
+			"cs",
+			"ss",
+			"ds",
+			"es",
+			"fs",
+			"gs",
+
 			"nul"
 		};
 	};
@@ -82,11 +98,11 @@ namespace rlang::alvm {
 	struct Registers
 	{
 	private:
-		std::array<std::int32_t, (std::size_t)RegType::Nul> m_Buffer = { 0 };
+		std::array<std::uint32_t, (std::size_t)RegType::Nul> m_Buffer = { 0 };
 
 	public:
-		inline std::int32_t& operator[](std::size_t index) { return m_Buffer[index]; }
-		inline std::int32_t& operator[](RegType reg) { return m_Buffer[(std::size_t)reg]; }
+		inline std::uint32_t& operator[](std::size_t index) { return m_Buffer[index]; }
+		inline std::uint32_t& operator[](RegType reg) { return m_Buffer[(std::size_t)reg]; }
 	};
 }
 

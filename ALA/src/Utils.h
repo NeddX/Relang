@@ -5,14 +5,14 @@
 
 namespace rlang::rmc::utils {
 	namespace string {
-		inline std::vector<std::int8_t> ToBytes(std::string&& str)
+		inline std::vector<std::uint8_t> ToBytes(std::string&& str)
 		{
-			return std::vector<std::int8_t>(str.begin(), str.end());
+			return std::vector<std::uint8_t>(str.begin(), str.end());
 		}
 
-		inline std::vector<std::int8_t> ToBytes(const std::string& str)
+		inline std::vector<std::uint8_t> ToBytes(const std::string& str)
 		{
-			return std::vector<std::int8_t>(str.begin(), str.end());
+			return std::vector<std::uint8_t>(str.begin(), str.end());
 		}
 
 		inline std::string ToLowerCopy(const std::string& str)

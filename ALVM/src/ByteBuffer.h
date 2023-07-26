@@ -17,8 +17,6 @@ namespace rlang::alvm {
 		{
 			m_Buffer.resize(Size);
 			m_StackPointer = (std::uintptr_t)m_Buffer.data() + Size - 1;
-			//m_StackPointer = Size - 1;
-			//std::fill(m_Buffer.begin(), m_Buffer.end(), 0);
 		}
 
 	public:
@@ -88,36 +86,6 @@ namespace rlang::alvm {
 		{
 			return (Pop16() << 16) | (std::uint16_t)Pop16();
  		}
-
-		void WriteAt(std::size_t address, std::uint8_t data)
-		{
-			*(std::uint8_t*)address = data;
-			//m_Buffer[address] = data;
-		}
-		void WriteAt16(std::size_t address, std::uint16_t data)
-		{
-			WriteAt(address, data & 0xff);
-			WriteAt(address + 1, data >> 8);
-		}
-        void WriteAt32(std::size_t address, std::uint32_t data)
-		{
-			WriteAt16(address, data & 0xffff);
-			WriteAt16(address + 2, data >> 16);
-        }
-
-        std::uint8_t ReadFrom(std::size_t address)
-		{
-			return *(std::uint8_t*)address;
-			//return m_Buffer[address];
-		}
-		std::uint16_t ReadFrom16(std::size_t address)
-		{
-			return ((std::uint16_t)ReadFrom(address + 1) << 8) | ReadFrom(address);
-		}
-		std::uint32_t ReadFrom32(std::size_t address)
-		{
-			return ((std::uint32_t)ReadFrom16(address + 2) << 16) | ReadFrom16(address);
-		}
 	};
 }
 

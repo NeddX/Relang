@@ -1,4 +1,5 @@
 #include "Runtime.h"
+#include "Instruction.h"
 
 #define GetRegVal(reg) m_Registers[reg.type]
 #define TriggerFlags(op1, op2, res, bitsize)                        \
@@ -11,20 +12,69 @@
         while (num)                                                 \
         {                                                           \
             n += num & 1;                                           \
-            1 >>= num;                                              \
+            num >>= 1;                                              \
         }                                                           \
         return n;                                                   \
     } (res << bitsize - 8) % 2 == 0;
 
+#define Push8(u8)								\
+	m_Sp--;										\
+	*(std::uint8_t*)m_Sp = (std::uint8_t)u8
+#define Push16(u16)								\
+	m_Sp -= 2;									\
+	*(std::uint16_t*)m_Sp = (std::uint16_t)u16
+#define Push32(u32)								\
+	m_Sp -= 4;									\
+	*(std::uint32_t*)m_Sp = (std::uint32_t)u32
+#define Pop8(u8)								\
+	u8 = *(std::uint8_t*)m_Sp;					\
+	m_Sp--
+#define Pop16(u16)								\
+	u16 = *(std::uint16_t*)m_Sp;				\
+	m_Sp -= 2
+#define Pop32(u32)								\
+	u32 = *(std::uint32_t*)m_Sp;				\
+	m_Sp -= 4
+#define Pop8s()									\
+	m_Sp--
+#define Pop16s()								\
+	m_Sp -= 2
+#define Pop32s()								\
+	m_Sp -= 4
+#define ReadFrom(addr)							\
+	*((std::uint8_t*)addr)
+#define ReadFrom16(addr)						\
+	*((std::uint16_t*)addr)
+#define ReadFrom32(addr)						\
+	*((std::uint32_t*)addr)
+#define WriteAt(addr, u8)						\
+	*((std::uint8_t*)addr) = (std::uint8_t)u8
+#define WriteAt16(addr, u16)						\
+	*((std::uint16_t*)addr) = (std::uint16_t)u16
+#define WriteAt32(addr, u32)						\
+	*((std::uint32_t*)addr) = (std::uint32_t)u32
+
 namespace rlang::alvm {
-	void ALVM::Run(const std::vector<Instruction>& bytecode, std::int32_t& result,
-				   const std::vector<std::uint8_t> data)
+	ALVM::ALVM(const std::vector<std::uint8_t>& data)
+		: m_Stack(data), m_Sp(m_Registers[RegType::Sp])
 	{
-		m_Bytecode = ((std::vector<Instruction>&)bytecode).data();
+		m_Stack.resize(m_Stack.size() + STACK_SIZE);
+
+		// Init registers
+		m_Registers[RegType::Sp] = (std::uint32_t)m_Stack.data() + data.size() + STACK_SIZE;
+		m_Registers[RegType::DS] = (std::uint32_t)m_Stack.data();
+		m_Registers[RegType::SS] = (std::uint32_t)m_Stack.data() + data.size() - 1;
+	}
+
+	void ALVM::Run(const std::vector<Instruction>& code, std::int32_t& result)
+	{
+		m_Bytecode = ((std::vector<Instruction>&)code).data();
 		m_Pc = m_Bytecode;
 
-		while (m_Pc != nullptr)
- 			(this->*m_Instructions[(std::size_t)m_Pc->opcode])();
+		m_Registers[RegType::CS] = (std::uint32_t)m_Bytecode;
+
+		while (m_Pc)
+			(this->*m_Instructions[(std::size_t)m_Pc->opcode])();
 
 		result = m_Registers[RegType::R0];
 	}
@@ -45,21 +95,39 @@ namespace rlang::alvm {
 		{
 			case 8:
 			{
-				if (m_Pc->reg1.type != RegType::Nul) m_Stack.Push((std::uint8_t)m_Registers[m_Pc->reg1.type]);
-				else m_Stack.Push((std::uint8_t)m_Pc->imm32);
+				if (m_Pc->reg1.type != RegType::Nul)
+				{
+					Push8((std::uint8_t)m_Registers[m_Pc->reg1.type]);
+				}
+				else
+				{
+					Push8((std::uint8_t)m_Pc->imm32);
+				}
 				break;
 			}
 			case 16:
 			{
-				if (m_Pc->reg1.type != RegType::Nul) m_Stack.Push16((std::uint16_t)m_Registers[m_Pc->reg1.type]);
-				else m_Stack.Push16((std::uint16_t)m_Pc->imm32);
+				if (m_Pc->reg1.type != RegType::Nul)
+				{
+					Push16((std::uint16_t)m_Registers[m_Pc->reg1.type]);
+				}
+				else
+				{
+					Push16((std::uint16_t)m_Pc->imm32);
+				}
 				break;
 			}
 			case 32:
 			default:
 			{
-				if (m_Pc->reg1.type != RegType::Nul) m_Stack.Push32(m_Registers[m_Pc->reg1.type]);
-				else m_Stack.Push32(m_Pc->imm32);
+				if (m_Pc->reg1.type != RegType::Nul)
+				{
+					Push32(m_Registers[m_Pc->reg1.type]);
+				}
+				else
+				{
+					Push32(m_Pc->imm32);
+				}
 				break;
 			}
 		}
@@ -72,21 +140,39 @@ namespace rlang::alvm {
 		{
 			case 8:
 			{
-				if (m_Pc->reg1.type != RegType::Nul) m_Registers[m_Pc->reg1.type] = (std::uint32_t)m_Stack.Pop();
-				else m_Stack.Pop();
+				if (m_Pc->reg1.type != RegType::Nul)
+				{
+					Pop8(GetRegVal(m_Pc->reg1));
+				}
+				else
+				{
+					Pop8s();
+				}
 				break;
 			}
 			case 16:
 			{
-				if (m_Pc->reg1.type != RegType::Nul) m_Registers[m_Pc->reg1.type] = (std::uint32_t)m_Stack.Pop16();
-				else m_Stack.Pop16();
+				if (m_Pc->reg1.type != RegType::Nul)
+				{
+					Pop16(GetRegVal(m_Pc->reg1));
+				}
+				else
+				{
+					Pop16s();
+				}
 				break;
 			}        
 			case 32:
 			default:
 			{
-				if (m_Pc->reg1.type != RegType::Nul) m_Registers[m_Pc->reg1.type] = m_Stack.Pop32();
-				else m_Stack.Pop32();
+				if (m_Pc->reg1.type != RegType::Nul)
+				{
+					Pop32(GetRegVal(m_Pc->reg1));
+				}
+				else
+				{
+					Pop32s();
+				}
 				break;
 			}
 		}
@@ -102,7 +188,7 @@ namespace rlang::alvm {
 			if (m_Pc->reg1.ptr)
 			{
 				// m, ...
-				op1 = m_Stack.ReadFrom32(GetRegVal(m_Pc->reg1));
+				op1 = ReadFrom32(GetRegVal(m_Pc->reg1));
 				if (m_Pc->reg2.type != RegType::Nul)
 				{
 					// m, imm32
@@ -114,7 +200,7 @@ namespace rlang::alvm {
 					op2 = GetRegVal(m_Pc->reg2);
 				}
 				res = op1 + op2;
-				m_Stack.WriteAt32(GetRegVal(m_Pc->reg1), res);
+				WriteAt32(GetRegVal(m_Pc->reg1), res);
 			}
 			else
 			{
@@ -125,7 +211,7 @@ namespace rlang::alvm {
 					if (m_Pc->reg2.ptr)
 					{
 						// r, m
-						op2 = m_Stack.ReadFrom32(GetRegVal(m_Pc->reg2));
+						op2 = ReadFrom32(GetRegVal(m_Pc->reg2));
 					}
 					else
 					{
@@ -165,7 +251,7 @@ namespace rlang::alvm {
 			if (m_Pc->reg1.ptr)
 			{
 				// m, ...
-				op1 = m_Stack.ReadFrom32(GetRegVal(m_Pc->reg1));
+				op1 = ReadFrom32(GetRegVal(m_Pc->reg1));
 				if (m_Pc->reg2.type != RegType::Nul)
 				{
 					// m, imm32
@@ -177,7 +263,7 @@ namespace rlang::alvm {
 					op2 = GetRegVal(m_Pc->reg2);
 				}
 				res = op1 - op2;
-				m_Stack.WriteAt32(GetRegVal(m_Pc->reg1), res);
+				WriteAt32(GetRegVal(m_Pc->reg1), res);
 			}
 			else
 			{
@@ -188,7 +274,7 @@ namespace rlang::alvm {
 					if (m_Pc->reg2.ptr)
 					{
 						// r, m
-						op2 = m_Stack.ReadFrom32(GetRegVal(m_Pc->reg2));
+						op2 = ReadFrom32(GetRegVal(m_Pc->reg2));
 					}
 					else
 					{
@@ -225,7 +311,7 @@ namespace rlang::alvm {
 		if (m_Pc->reg1.ptr)
 		{
 			// r0, m
-			op2 = m_Stack.ReadFrom32(GetRegVal(m_Pc->reg1));
+			op2 = ReadFrom32(GetRegVal(m_Pc->reg1));
 		}
 		else
 		{
@@ -242,7 +328,7 @@ namespace rlang::alvm {
 		if (m_Pc->reg1.ptr)
 		{
 			// r, m
-			op2 = m_Stack.ReadFrom32(GetRegVal(m_Pc->reg1));
+			op2 = ReadFrom32(GetRegVal(m_Pc->reg1));
 		}
 		else
 		{
@@ -264,19 +350,19 @@ namespace rlang::alvm {
 			{
 				case 8:
 				{
-					std::uint8_t op1 = m_Stack.ReadFrom(GetRegVal(m_Pc->reg1)), res = ++op1;
+					std::uint8_t op1 = ReadFrom(GetRegVal(m_Pc->reg1)), res = ++op1;
 					TriggerFlags(op1, 1, res, 32);
 					break;
 				}
 				case 16:
 				{
-					std::uint16_t op1 = m_Stack.ReadFrom16(GetRegVal(m_Pc->reg1)), res = ++op1;
+					std::uint16_t op1 = ReadFrom16(GetRegVal(m_Pc->reg1)), res = ++op1;
 					TriggerFlags(op1, 1, res, 32);
 					break;
 				}
 				case 32:
 				{
-					std::uint32_t op1 = m_Stack.ReadFrom32(GetRegVal(m_Pc->reg1)), res = ++op1;
+					std::uint32_t op1 = ReadFrom32(GetRegVal(m_Pc->reg1)), res = ++op1;
 					TriggerFlags(op1, 1, res, 32);
 					break;
 				}
@@ -301,20 +387,20 @@ namespace rlang::alvm {
 			{
 				case 8:
 				{
-					//std::printf("%d", m_Stack.ReadFrom((std::size_t)m_Registers[m_Pc->reg1.type]));
-					std::cout << m_Stack.ReadFrom((std::size_t)m_Registers[m_Pc->reg1.type]);
+					//std::printf("%d", ReadFrom((std::size_t)m_Registers[m_Pc->reg1.type]));
+					std::cout << ReadFrom((std::size_t)m_Registers[m_Pc->reg1.type]);
 					break;
 				}
 				case 16:
 				{
-					//std::printf("%d", m_Stack.ReadFrom16((std::size_t)m_Registers[m_Pc->reg1.type]));
-					std::cout << m_Stack.ReadFrom16((std::size_t)m_Registers[m_Pc->reg1.type]);
+					//std::printf("%d", ReadFrom16((std::size_t)m_Registers[m_Pc->reg1.type]));
+					std::cout << ReadFrom16((std::size_t)m_Registers[m_Pc->reg1.type]);
 					break;
 				}
 				case 32:
 				{
-					//std::printf("%d", m_Stack.ReadFrom32((std::size_t)m_Registers[m_Pc->reg1.type]));
-					std::cout << m_Stack.ReadFrom32((std::size_t)m_Registers[m_Pc->reg1.type]);
+					//std::printf("%d", ReadFrom32((std::size_t)m_Registers[m_Pc->reg1.type]));
+					std::cout << ReadFrom32((std::size_t)m_Registers[m_Pc->reg1.type]);
 					break;
 				}
 			}
@@ -332,112 +418,9 @@ namespace rlang::alvm {
 		// FIXME: Buffer the string instead of making a function for every single character.
 		std::uint8_t c = 1;
 		std::size_t i = 0;
-		while ((c = m_Stack.ReadFrom(m_Registers[m_Pc->reg1.type] - i++)) != 0) std::cout << c;
+		while ((c = ReadFrom(m_Registers[m_Pc->reg1.type] + i++)) != 0)
+			std::cout << c;
 
-		m_Pc++;
-	}
-
-	void ALVM::CmpIntLessThan()
-	{
-		// Remember, when working with high performance applications, bad looking code always runs faster than clean looking code.
-		if (m_Pc->reg2.type != RegType::Nul)
-		{
-			if (m_Pc->reg1.ptr)
-			{
-				switch (m_Pc->reg1.size)
-				{
-					case 8:
-						m_Registers[RegType::CF] = m_Stack.ReadFrom(m_Registers[m_Pc->reg1.type]) < m_Registers[m_Pc->reg2.type];
-						break;
-					case 16:
-						m_Registers[RegType::CF] = m_Stack.ReadFrom16(m_Registers[m_Pc->reg1.type]) < m_Registers[m_Pc->reg2.type];
-						break;
-					case 32:
-					default:
-						m_Registers[RegType::CF] = m_Stack.ReadFrom32(m_Registers[m_Pc->reg1.type]) < m_Registers[m_Pc->reg2.type];
-						break;
-				}
-			}
-			else
-			{
-				m_Registers[RegType::CF] = m_Registers[m_Pc->reg1.type] < m_Registers[m_Pc->reg2.type];
-			}
-		}
-		else
-		{
-			if (m_Pc->reg1.ptr)
-			{
-				switch (m_Pc->reg1.size)
-				{
-					case 8:
-						m_Registers[RegType::CF] = m_Stack.ReadFrom(m_Registers[m_Pc->reg1.type]) < m_Pc->imm32;
-						break;
-					case 16:
-						m_Registers[RegType::CF] = m_Stack.ReadFrom16(m_Registers[m_Pc->reg1.type]) < m_Pc->imm32;
-						break;
-					case 32:
-					default:
-						m_Registers[RegType::CF] = m_Stack.ReadFrom32(m_Registers[m_Pc->reg1.type]) < m_Pc->imm32;
-						break;
-				}
-			}
-			else
-			{
-				m_Registers[RegType::CF] = m_Registers[m_Pc->reg1.type] < m_Pc->imm32;
-			}
-		}
-		m_Pc++;
-	}
-
-	void ALVM::CmpIntEqualTo()
-	{
-		// Remember, when working with high performance applications, bad looking code always runs faster than clean looking code.
-		if (m_Pc->reg2.type != RegType::Nul)
-		{
-			if (m_Pc->reg1.ptr)
-			{
-				switch (m_Pc->reg1.size)
-				{
-				case 8:
-					m_Registers[RegType::CF] = m_Stack.ReadFrom(m_Registers[m_Pc->reg1.type]) == m_Registers[m_Pc->reg2.type];
-					break;
-				case 16:
-					m_Registers[RegType::CF] = m_Stack.ReadFrom16(m_Registers[m_Pc->reg1.type]) == m_Registers[m_Pc->reg2.type];
-					break;
-				case 32:
-				default:
-					m_Registers[RegType::CF] = m_Stack.ReadFrom32(m_Registers[m_Pc->reg1.type]) == m_Registers[m_Pc->reg2.type];
-					break;
-				}
-			}
-			else
-			{
-				m_Registers[RegType::CF] = m_Registers[m_Pc->reg1.type] == m_Registers[m_Pc->reg2.type];
-			}
-		}
-		else
-		{
-			if (m_Pc->reg1.ptr)
-			{
-				switch (m_Pc->reg1.size)
-				{
-				case 8:
-					m_Registers[RegType::CF] = m_Stack.ReadFrom(m_Registers[m_Pc->reg1.type]) == m_Pc->imm32;
-					break;
-				case 16:
-					m_Registers[RegType::CF] = m_Stack.ReadFrom16(m_Registers[m_Pc->reg1.type]) == m_Pc->imm32;
-					break;
-				case 32:
-				default:
-					m_Registers[RegType::CF] = m_Stack.ReadFrom32(m_Registers[m_Pc->reg1.type]) == m_Pc->imm32;
-					break;
-				}
-			}
-			else
-			{
-				m_Registers[RegType::CF] = m_Registers[m_Pc->reg1.type] == m_Pc->imm32;
-			}
-		}
 		m_Pc++;
 	}
 
@@ -458,16 +441,16 @@ namespace rlang::alvm {
 					switch (m_Pc->reg1.size)
 					{
 						case 8:
-							m_Stack.WriteAt(m_Registers[m_Pc->reg1.type], m_Stack.ReadFrom(m_Registers[m_Pc->reg2.type]));
+							WriteAt(m_Registers[m_Pc->reg1.type], ReadFrom(m_Registers[m_Pc->reg2.type]));
 							break;
 						case 16:
 							switch (m_Pc->reg2.size)
 							{
 								case 8:
-									m_Stack.WriteAt16(m_Registers[m_Pc->reg1.type], m_Stack.ReadFrom(m_Registers[m_Pc->reg2.type]));
+									WriteAt16(m_Registers[m_Pc->reg1.type], ReadFrom(m_Registers[m_Pc->reg2.type]));
 									break;
 								case 16:
-									m_Stack.WriteAt16(m_Registers[m_Pc->reg1.type], m_Stack.ReadFrom16(m_Registers[m_Pc->reg2.type]));
+									WriteAt16(m_Registers[m_Pc->reg1.type], ReadFrom16(m_Registers[m_Pc->reg2.type]));
 									break;
 							}
 							break;
@@ -476,14 +459,14 @@ namespace rlang::alvm {
 							switch (m_Pc->reg2.size)
 							{
 								case 8:
-									m_Stack.WriteAt32(m_Registers[m_Pc->reg1.type], m_Stack.ReadFrom(m_Registers[m_Pc->reg2.type]));
+									WriteAt32(m_Registers[m_Pc->reg1.type], ReadFrom(m_Registers[m_Pc->reg2.type]));
 									break;
 								case 16:
-									m_Stack.WriteAt32(m_Registers[m_Pc->reg1.type], m_Stack.ReadFrom16(m_Registers[m_Pc->reg2.type]));
+									WriteAt32(m_Registers[m_Pc->reg1.type], ReadFrom16(m_Registers[m_Pc->reg2.type]));
 									break;
 								case 32:
 								default:
-									m_Stack.WriteAt32(m_Registers[m_Pc->reg1.type], m_Stack.ReadFrom32(m_Registers[m_Pc->reg2.type]));
+									WriteAt32(m_Registers[m_Pc->reg1.type], ReadFrom32(m_Registers[m_Pc->reg2.type]));
 									break;
 							}
 							break;
@@ -494,14 +477,14 @@ namespace rlang::alvm {
 					switch (m_Pc->reg1.size)
 					{
 						case 8:
-							m_Registers[m_Pc->reg1.type] = m_Stack.ReadFrom(m_Registers[m_Pc->reg2.type]);
+							m_Registers[m_Pc->reg1.type] = ReadFrom(m_Registers[m_Pc->reg2.type]);
 							break;
 						case 16:
-							m_Registers[m_Pc->reg1.type] = m_Stack.ReadFrom16(m_Registers[m_Pc->reg2.type]);
+							m_Registers[m_Pc->reg1.type] = ReadFrom16(m_Registers[m_Pc->reg2.type]);
 							break;
 						case 32:
 						default:
-							m_Registers[m_Pc->reg1.type] = m_Stack.ReadFrom32(m_Registers[m_Pc->reg2.type]);
+							m_Registers[m_Pc->reg1.type] = ReadFrom32(m_Registers[m_Pc->reg2.type]);
 							break;
 					}
 				}
@@ -513,14 +496,14 @@ namespace rlang::alvm {
 					switch (m_Pc->reg1.size)
 					{
 						case 8:
-							m_Stack.WriteAt(m_Registers[m_Pc->reg1.type], (std::uint8_t)m_Registers[m_Pc->reg2.type]);
+							WriteAt(m_Registers[m_Pc->reg1.type], (std::uint8_t)m_Registers[m_Pc->reg2.type]);
 							break;
 						case 16:
-							m_Stack.WriteAt16(m_Registers[m_Pc->reg1.type], (std::uint16_t)m_Registers[m_Pc->reg2.type]);
+							WriteAt16(m_Registers[m_Pc->reg1.type], (std::uint16_t)m_Registers[m_Pc->reg2.type]);
 							break;
 						case 32:
 						default:
-							m_Stack.WriteAt32(m_Registers[m_Pc->reg1.type], m_Registers[m_Pc->reg2.type]);
+							WriteAt32(m_Registers[m_Pc->reg1.type], m_Registers[m_Pc->reg2.type]);
 							break;
 					}
 				}
@@ -537,14 +520,14 @@ namespace rlang::alvm {
 				switch (m_Pc->reg1.size)
 				{
 					case 8:
-						m_Stack.WriteAt(m_Registers[m_Pc->reg1.type], (std::uint8_t)m_Pc->imm32);
+						WriteAt(m_Registers[m_Pc->reg1.type], (std::uint8_t)m_Pc->imm32);
 						break;
 					case 16:
-						m_Stack.WriteAt16(m_Registers[m_Pc->reg1.type], (std::uint16_t)m_Pc->imm32);
+						WriteAt16(m_Registers[m_Pc->reg1.type], (std::uint16_t)m_Pc->imm32);
 						break;
 					case 32:
 					default:
-						m_Stack.WriteAt32(m_Registers[m_Pc->reg1.type], m_Pc->imm32);
+						WriteAt32(m_Registers[m_Pc->reg1.type], m_Pc->imm32);
 						break;
 				}
 			}
@@ -576,14 +559,15 @@ namespace rlang::alvm {
 
 	void ALVM::Call()
 	{
-		m_Stack.Push32((std::uintptr_t)(m_Pc + 1));
+		Push32((std::uintptr_t)(m_Pc + 1));
 		Jump();
 	}
 
 	void ALVM::Return()
 	{
-		Instruction* addr = (Instruction*)(std::uintptr_t)m_Stack.Pop32();
-		m_Pc = addr;
+		Pop32(std::uint32_t addr);
+		//Instruction* addr = (Instruction*)(std::uintptr_t)Pop32();
+		m_Pc = (Instruction*)addr;
 	}
 
 	void ALVM::Malloc()
@@ -595,13 +579,13 @@ namespace rlang::alvm {
 				switch (m_Pc->size)
 				{
 					case 8:
-						m_Registers[RegType::R0] = (std::uint32_t)std::malloc((std::size_t)m_Stack.ReadFrom(GetRegVal(m_Pc->reg1)));
+						m_Registers[RegType::R0] = (std::uint32_t)std::malloc((std::size_t)ReadFrom(GetRegVal(m_Pc->reg1)));
 						break;
 					case 16:
-						m_Registers[RegType::R0] = (std::uint32_t)std::malloc((std::size_t)m_Stack.ReadFrom16(GetRegVal(m_Pc->reg1)));
+						m_Registers[RegType::R0] = (std::uint32_t)std::malloc((std::size_t)ReadFrom16(GetRegVal(m_Pc->reg1)));
 						break;
 					case 32:
-						m_Registers[RegType::R0] = (std::uint32_t)std::malloc((std::size_t)m_Stack.ReadFrom32(GetRegVal(m_Pc->reg1)));
+						m_Registers[RegType::R0] = (std::uint32_t)std::malloc((std::size_t)ReadFrom32(GetRegVal(m_Pc->reg1)));
 						break;
 				}
 			}
@@ -624,12 +608,11 @@ namespace rlang::alvm {
 		m_Pc++;
 	}
 
-	void ALVM::Db()
+	/*void ALVM::Db()
 	{
 		std::size_t size = m_Pc->bytes.size();
-		m_Stack.InsertBack(m_Pc->bytes.begin(), m_Pc->bytes.end());
+		InsertBack(m_Pc->bytes.begin(), m_Pc->bytes.end());
 		m_Registers[RegType::Sp] -= size;
 		m_Pc++;
-	}
-
-}
+	}*/
+} // namespace rlang::alvm

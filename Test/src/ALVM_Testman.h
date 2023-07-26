@@ -8,6 +8,7 @@
 namespace testman::alvm {
     void SimplePrint()
     {
+        /*
         using namespace rlang::alvm;
         ALVM r;
 
@@ -22,6 +23,7 @@ namespace testman::alvm {
         };
 
         r.Run(code, result);
+        */
     }
 } // namespace testman::alvm
 

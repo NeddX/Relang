@@ -9,7 +9,7 @@
 #include "Utils.h"
 
 namespace rlang::rmc {
-	struct ConstInfo
+	struct DataInfo
 	{
 		std::size_t addr = 0;
 		std::size_t size = 0;
@@ -20,19 +20,21 @@ namespace rlang::rmc {
 	struct Compiler
 	{
 	private:
-		static std::unordered_map<std::string, ConstInfo> m_ConstantNameTable;
+		static std::unordered_map<std::string, DataInfo> m_DataNameTable;
 		static std::unordered_map<std::string, std::pair<std::size_t, std::unordered_map<std::string, std::size_t>>> m_LabelAddressMap;
 		static std::vector<alvm::Instruction> m_CompiledCode;
 		static std::vector<alvm::Instruction> m_InstEpilogue;
+		static std::vector<std::uint8_t> m_DataSection;
+		static std::string m_CurrentSection;
 		static std::size_t m_StackSize;
-		static std::size_t m_ConstantCount;
+		static std::size_t m_DataCount;
 
 	private:
 		static void Preproccess(const TokenList& tokens);
 		static void Cleanup();
 
 	public:
-		static std::vector<alvm::Instruction> Compile(const TokenList& tokens);
+		static std::pair<std::vector<alvm::Instruction>, std::vector<std::uint8_t>> Compile(const TokenList& tokens);
 		
 	private:
 		static alvm::OpCode GetInst(std::string inst);

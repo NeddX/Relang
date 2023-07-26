@@ -45,8 +45,13 @@ int main(int argc, const char* argv[])
         std::exit(-1);
     }
 
+    using Inst = rlang::alvm::Instruction;
+    using Code = rlang::alvm::OpCode;
+    using Reg = rlang::alvm::RegType;
+
     rlang::rmc::TokenList tk_list = rlang::rmc::Lexer::Start(src);
-    std::vector<rlang::alvm::Instruction> compiled_code = rlang::rmc::Compiler::Compile(tk_list);
+    auto compiler_result = rlang::rmc::Compiler::Compile(tk_list);
+    std::vector<rlang::alvm::Instruction> compiled_code = compiler_result.first;
 
     std::cout << "Compilation finished.\n";
     if (argc > 1 && std::strcmp(argv[1], "--dump-intermediate") == 0)
@@ -123,7 +128,7 @@ int main(int argc, const char* argv[])
     }
 
     std::cout << std::endl;
-    rlang::alvm::ALVM r;
+    rlang::alvm::ALVM r(compiler_result.second);
     std::int32_t result = 0;
     r.Run(compiled_code, result); // mr synctactical shugar
     std::cout << "Exited with code: " << result << std::endl;

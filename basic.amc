@@ -1,26 +1,24 @@
-; section .data
-;	db		NL					"\n"
-	db		STRMEN				"ze streng!!!!!!"
-;	db		STRLOL				"ze string format...."
-;	db		__const_str_#0		"Pointer Result: "
-
-; section .text
-	call @_main
+.section data:
+	str			ZE_STRINK	"hello, zis be ascii strenk"
+	str			ZE_STRTWO	"ze sekond strink ::DDDD"
+	const		ZE_KONST	#127
+	var			ZE_VAR		#255
+	str			NL			"\n"
 	
-	mov %r0, #1	
-	end	
+.section code:
+	call @_main	
+	
+	mov %r0, #1
+	end
 
 @_main:
 	push %bp
 	mov %bp, %sp
 
-	pstr STRMEN
-
-	;malloc %r0
-	;pstr __const_str_#0
-	;pint %r0
-	;free %r0
-	;pstr NL
+	;pint ZE_VAR	
+	pstr NL	
+	pstr ZE_STRINK
+	pstr NL
 
 	pop %bp
 	ret

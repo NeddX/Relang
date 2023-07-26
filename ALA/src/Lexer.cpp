@@ -116,6 +116,7 @@ namespace rlang::rmc {
                 case '+':
                 case ']':
                 case '[':
+                case '.':
                 {
                     if (current_token.type == TokenType::Comment || current_token.type == TokenType::StringLiteral)
                     {
