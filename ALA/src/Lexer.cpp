@@ -173,6 +173,8 @@ namespace rlang::rmc {
                     t.data = (std::int32_t)std::stoul(t.text);
                     break;
                 }
+                default:
+                    break;
             }
             tokens.push_back(t);
         }

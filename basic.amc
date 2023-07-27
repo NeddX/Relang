@@ -1,24 +1,70 @@
 .section data:
-	str			ZE_STRINK	"hello, zis be ascii strenk"
-	str			ZE_STRTWO	"ze sekond strink ::DDDD"
-	const		ZE_KONST	#127
-	var			ZE_VAR		#255
-	str			NL			"\n"
-	
-.section code:
+	str			ZF_FLAG			"Zero Flag: "
+	str			CF_FLAG			"Carry Flag: "
+	str			OF_FLAG			"Overflow Flag: "
+	str			SF_FLAG			"Sign Flag: "
+	str			PF_FLAG			"Parity Flag: "
+	str			RESULT			"Result: "	
+	str			NL				"\n"	
+	const		ZE_KONST		#255
+	const		UINT32_MAX		#4294967295
+
+.section code:	
 	call @_main	
-	
-	mov %r0, #1
+	mov %r0, #0
 	end
 
 @_main:
 	push %bp
 	mov %bp, %sp
 
-	;pint ZE_VAR	
-	pstr NL	
-	pstr ZE_STRINK
+	mov %r0, #100
+	mov %r1, #100
+	cmp %r0, %r1	
+
+	pstr RESULT
+	pint dword [%bp-#4]
+	pstr NL
 	pstr NL
 
+	pstr ZF_FLAG
+	pint %zf
+	pstr NL
+
+	pstr CF_FLAG
+	pint %cf
+	pstr NL
+
+	pstr OF_FLAG
+	pint %of
+	pstr NL
+
+	pstr SF_FLAG
+	pint %sf
+	pstr NL
+
+	pstr PF_FLAG
+	pint %pf
+	pstr NL
+	pstr NL
+	
+	ret
+
+@int_print:
+	push %bp
+	mov %bp, %sp
+
+	mov %r0, #0
+	mov %r1, #255
+
+.l1:
+	cmp %r0, %r1	
+	jl .l2
+	pint %r0
+	pstr NL
+	inc %r0
+	jmp .l1
+
+.l2:
 	pop %bp
 	ret

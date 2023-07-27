@@ -25,12 +25,15 @@ namespace rlang::alvm {
 		R15,
 
 		// Reserved
-		Bp,
-		Sp,
+		BP,
+		SP,
+
+		// Status Flags Register
+		SFR,
 
 		// Flags
-		CF,
 		ZF,
+		CF,
 		OF,
 		SF,
 		PF,
@@ -52,7 +55,7 @@ namespace rlang::alvm {
 		RegType type = RegType::Nul;
 		bool ptr = false;
 		std::int8_t size = 32;
-		std::int32_t ptr_offset = 0;
+		std::int32_t displacement = 0;
 
 	public:
 		inline static const std::vector<std::string> RegisterStr =
@@ -77,8 +80,10 @@ namespace rlang::alvm {
 			"bp",
 			"sp",
 
-			"cf",
+			"sfr",
+
 			"zf",
+			"cf",
 			"of",
 			"sf",
 			"pf",

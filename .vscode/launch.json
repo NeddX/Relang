@@ -1,6 +1,6 @@
 {
     "version": "0.2.0",
-    "configurations": [
+    "configurations": [  
         {
             "name": "(gdb) Launch",
             "type": "cppdbg",
@@ -24,6 +24,14 @@
                     "ignoreFailures": true
                 }
             ]
+        },
+        {
+            "name": "(lldb) Launch",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceRoot}/builds/linux-vscode/Test/rtest",
+            "args": [ "--dump-intermediate" ],
+            "cwd": "${workspaceRoot}/builds/linux-vscode/Test"
         }
         
     ]

@@ -58,7 +58,7 @@ namespace rlang::rmc {
                 continue;
             }
 
-            if (i > 0 && tokens[i].line > tokens[i - 1].line)
+            if (tokens[i].type == TokenType::Instruction)
                 inst_count++;
 
             switch (tokens[i].type)
@@ -69,8 +69,9 @@ namespace rlang::rmc {
                         // Label definition.
                         if (tokens[i + 2].type == TokenType::Operator && tokens[i + 2].text == ":")
                         {
-                            m_LabelAddressMap[tokens[i + 1].text] = { inst_count, { } };
+                            m_LabelAddressMap[tokens[i + 1].text] = { inst_count + 1, { } };
                             last_label_definition = tokens[i + 1].text;
+                            i += 2;
                         }
                     }
                     else if (tokens[i].text == "." && tokens[i + 1].type == TokenType::Identifier)
@@ -78,7 +79,16 @@ namespace rlang::rmc {
                         // Local label definition.
                         if (tokens[i + 2].type == TokenType::Operator && tokens[i + 2].text == ":")
                         {
-                            m_LabelAddressMap[last_label_definition].second[tokens[i + 1].text] = inst_count;
+                            if (auto it = m_LabelAddressMap[last_label_definition].second.find(tokens[i + 1].text);
+                                it != m_LabelAddressMap[last_label_definition].second.end())
+                            {
+                                std::cerr << "Preproccess Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): "
+                                          << "Unconsistent local label redefinition of '" << tokens[i + 1].text << "'."
+                                          << std::endl;
+                                std::exit(-1);
+                            }
+                            m_LabelAddressMap[last_label_definition].second[tokens[i + 1].text] = inst_count + 1;
+                            i += 2;
                         }
                     }
                     break;
@@ -249,71 +259,55 @@ namespace rlang::rmc {
                     }
                     else if (tokens[i].text == "+")
                     {
-                        if (ptr)
+                        if (tokens[i + 1].type != TokenType::Number)
+                        {
+                            std::cout << "Compiler Error @ line (" << tokens[i + 1].line << ", " << tokens[i + 1].cur << "): "
+                                      << "Expected a number literal after " << tokens[i].text << ".\n";
+                            std::exit(-1);
+                        }
+                        else if (ptr)
                         {
                             if (operand_count <= 0)
                             {
-                                m_CompiledCode.push_back(alvm::Instruction { .opcode = alvm::OpCode::Push, .reg1 = current_instruction.reg1.type });
-                                m_CompiledCode.push_back(alvm::Instruction
-                                {
-                                    .opcode = alvm::OpCode::Add,
-                                    .imm32 = (std::uint32_t)std::stoul(tokens[i + 1].text),
-                                    .reg1 = current_instruction.reg1.type,
-                                });
-                                m_InstEpilogue.push_back(alvm::Instruction { .opcode = alvm::OpCode::Pop, .reg1 = current_instruction.reg1.type });
+                                current_instruction.reg1.displacement = (std::int32_t)std::stoul(tokens[i + 1].text);
                             }
                             else
                             {
-
-                                m_CompiledCode.push_back(alvm::Instruction { .opcode = alvm::OpCode::Push, .reg1 = current_instruction.reg2.type });
-                                m_CompiledCode.push_back(alvm::Instruction
-                                {
-                                    .opcode = alvm::OpCode::Add,
-                                    .imm32 = (std::uint32_t)std::stoul(tokens[i + 1].text),
-                                    .reg1 = current_instruction.reg2.type,
-                                });
-                                m_InstEpilogue.push_back(alvm::Instruction { .opcode = alvm::OpCode::Pop, .reg1 = current_instruction.reg2.type });
+                                current_instruction.reg2.displacement = (std::int32_t)std::stoul(tokens[i + 1].text);
                             }
                             i++;
                         }
                         else
                         {
-                            std::cerr << "Bad operand @ line (" << tokens[i].line << ", " << tokens[i].cur << ")." << std::endl;
+                            std::cout << "Compiler Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): "
+                                      << "Single operation arithmetic expressions are only allowed inside Memory Access Brackets.\n";
                             std::exit(-1);
                         }
                     }
                     else if (tokens[i].text == "-")
                     {
-                        if (ptr)
+                        if (tokens[i + 1].type != TokenType::Number)
+                        {
+                            std::cout << "Compiler Error @ line (" << tokens[i + 1].line << ", " << tokens[i + 1].cur << "): "
+                                      << "Expected a number literal after " << tokens[i].text << ".\n";
+                            std::exit(-1);
+                        }
+                        else if (ptr)
                         {
                             if (operand_count <= 0)
                             {
-                                m_CompiledCode.push_back(alvm::Instruction { .opcode = alvm::OpCode::Push, .reg1 = current_instruction.reg1.type });
-                                m_CompiledCode.push_back(alvm::Instruction
-                                {
-                                    .opcode = alvm::OpCode::Sub,
-                                    .imm32 = (std::uint32_t)std::stoul(tokens[i + 1].text),
-                                    .reg1 = current_instruction.reg1.type,
-                                });
-                                m_InstEpilogue.push_back(alvm::Instruction { .opcode = alvm::OpCode::Pop, .reg1 = current_instruction.reg1.type });
+                                current_instruction.reg1.displacement = -(std::int32_t)std::stoul(tokens[i + 1].text);
                             }
                             else
                             {
-
-                                m_CompiledCode.push_back(alvm::Instruction { .opcode = alvm::OpCode::Push, .reg1 = current_instruction.reg2.type });
-                                m_CompiledCode.push_back(alvm::Instruction
-                                {
-                                    .opcode = alvm::OpCode::Sub,
-                                    .imm32 = (std::uint32_t)std::stoul(tokens[i + 1].text),
-                                    .reg1 = current_instruction.reg2.type,
-                                });
-                                m_InstEpilogue.push_back(alvm::Instruction { .opcode = alvm::OpCode::Pop, .reg1 = current_instruction.reg2.type });
+                                current_instruction.reg2.displacement = -(std::int32_t)std::stoul(tokens[i + 1].text);
                             }
                             i++;
                         }
                         else
                         {
-                            std::cerr << "Bad operand @ line (" << tokens[i].line << ", " << tokens[i].cur << ")." << std::endl;
+                            std::cout << "Compiler Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): "
+                                      << "Single operation arithmetic expressions are only allowed inside Memory Access Brackets.\n";
                             std::exit(-1);
                         }
                     }
@@ -333,7 +327,16 @@ namespace rlang::rmc {
                         if (tokens[i + 1].type == TokenType::Identifier &&
                             tokens[i + 2].text != ":")
                         {
-                            current_instruction.imm32 = (std::uint32_t)m_LabelAddressMap[tokens[i + 1].text].first;
+                            if (m_LabelAddressMap.find(tokens[i + 1].text) != m_LabelAddressMap.end())
+                            {
+                                current_instruction.imm32 = (std::uint32_t)m_LabelAddressMap[tokens[i + 1].text].first;
+                            }
+                            else
+                            {
+                                std::cout << "Compiler Error @ line (" << tokens[i + 1].line << ", " << tokens[i + 1].cur << "): "
+                                          << "Attempted to reference an undefined label '" << tokens[i + 1].text << "'.\n";
+                                std::exit(-1);
+                            }
                             i++;
                         }
                         else
@@ -365,38 +368,40 @@ namespace rlang::rmc {
                                 std::exit(-1);
                             }
                         }
-                        else if (tokens[i + 1].type == TokenType::Identifier &&
-                            tokens[i + 2].type != TokenType::Operator && tokens[i + 2].text != ":")
+                        else if (tokens[i + 1].type == TokenType::Identifier)
                         {
                             // Possible local label reference
-                            if  (m_LabelAddressMap.find(current_label) != m_LabelAddressMap.end() &&
-                                 m_LabelAddressMap[current_label].second.find(tokens[i + 1].text) !=
-                                 m_LabelAddressMap[current_label].second.end())
+                            if (tokens[i + 2].type != TokenType::Operator || tokens[i + 2].text != ":")
                             {
-                                current_instruction.imm32 = (std::uint32_t)m_LabelAddressMap[current_label].second[tokens[i + 1].text];
-                            }
-                            else
-                            {
-                                if (!current_label.empty())
+                                if  (m_LabelAddressMap.find(current_label) != m_LabelAddressMap.end() &&
+                                     m_LabelAddressMap[current_label].second.find(tokens[i + 1].text) !=
+                                     m_LabelAddressMap[current_label].second.end())
                                 {
-                                    std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): Local label '"
-                                              << tokens[i + 1].text << "' in parent label '" << current_label << "' is undefined.\n";
+                                    current_instruction.imm32 = (std::uint32_t)m_LabelAddressMap[current_label].second[tokens[i + 1].text];
+                                    i++;
+                                    break;
                                 }
                                 else
                                 {
-                                    std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): "
-                                              << "Attempted to reference a local label in an unexistent parent label.\n";
+                                    if (!current_label.empty())
+                                    {
+                                        std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): Local label '"
+                                                  << tokens[i + 1].text << "' in parent label '" << current_label << "' is undefined.\n";
+                                    }
+                                    else
+                                    {
+                                        std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): "
+                                                  << "Attempted to reference a local label in an unexistent parent label.\n";
+                                    }
+                                    std::exit(-1);
                                 }
-                                std::exit(-1);
                             }
-
-                        }
-                        else if (m_LabelAddressMap[current_label].second.find(tokens[i + 1].text) != m_LabelAddressMap[current_label].second.end())
-                        {
-                            std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): "
-                                      << "Unconsistent local label redefinition of '" << tokens[i + 1].text << "'."
-                                      << std::endl;
-                            std::exit(-1);
+                            else
+                            {
+                                // It's a local label definition, ignore it.
+                                i += 2;
+                                break;
+                            }
                         }
                     }
                     else if (tokens[i + 1].text != ":" && tokens[i - 1].type != TokenType::Identifier && tokens[i - 2].type != TokenType::Operator && tokens[i - 2].text != "@")
@@ -430,20 +435,15 @@ namespace rlang::rmc {
                     }
                     else if (auto it = m_DataNameTable.find(tokens[i].text); it != m_DataNameTable.end())
                     {
-                        // I don't know what I wrote, this is so bug prone and I can feel it.
-                        // I don't want to debug.
                         switch (current_instruction.opcode)
                         {
-                            case alvm::OpCode::PrintStr:
+                            case alvm::OpCode::PStr:
                                 if (operand_count == 0)
                                 {
                                     if (it->second.type == TokenType::StringLiteral)
                                     {
-                                        m_CompiledCode.push_back(alvm::Instruction { .opcode = alvm::OpCode::Push, .reg1 = { alvm::RegType::R0 } });
-                                        m_CompiledCode.push_back(alvm::Instruction { .opcode = alvm::OpCode::Mov, .imm32 = it->second.addr, .reg1 = { alvm::RegType::R0 } });
-                                        m_CompiledCode.push_back(alvm::Instruction { .opcode = alvm::OpCode::Add, .reg1 = { alvm::RegType::R0 }, .reg2 = { alvm::RegType::DS }});
-                                        current_instruction.reg1 = { alvm::RegType::R0 };
-                                        m_InstEpilogue.push_back(alvm::Instruction { .opcode = alvm::OpCode::Pop, .reg1 = { alvm::RegType::R0 } });
+                                        current_instruction.reg1 =
+                                            { .type = alvm::RegType::DS, .ptr = true, .displacement = (std::int32_t)it->second.addr };
                                     }
                                     else
                                     {
@@ -467,16 +467,13 @@ namespace rlang::rmc {
                                 }
                                 break;
                             case alvm::OpCode::Jump:
-                            case alvm::OpCode::PrintInt:
+                            case alvm::OpCode::PInt:
                             case alvm::OpCode::Push:
                                 if (operand_count == 0)
                                 {
                                     if (it->second.type == TokenType::Number)
                                     {
-                                        m_CompiledCode.push_back(alvm::Instruction{.opcode = alvm::OpCode::Push, .reg1 = {alvm::RegType::R0}});
-                                        m_CompiledCode.push_back(alvm::Instruction{.opcode = alvm::OpCode::Mov, .imm32 = it->second.value, .reg1 = {alvm::RegType::R0}});
-                                        current_instruction.reg1 = {alvm::RegType::R0, ptr};
-                                        m_InstEpilogue.push_back(alvm::Instruction{.opcode = alvm::OpCode::Pop, .reg1 = {alvm::RegType::R0}});
+                                        current_instruction.imm32 = it->second.value;
                                     }
                                     else
                                     {
@@ -499,6 +496,8 @@ namespace rlang::rmc {
                                     std::exit(-1);
                                 }
                                 break;
+                            case alvm::OpCode::Store:
+                            case alvm::OpCode::Load:
                             case alvm::OpCode::Mov:
                                 if (operand_count == 0)
                                 {

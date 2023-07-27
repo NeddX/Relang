@@ -82,7 +82,12 @@ int main(int argc, const char* argv[])
                             std::cout << "dword";
                             break;
                     }
-                    std::cout << " [%" << rlang::alvm::Register::RegisterStr[(std::size_t)inst.reg1.type] << "]";
+                    std::cout << " [%" << rlang::alvm::Register::RegisterStr[(std::size_t)inst.reg1.type];
+                    if (inst.reg1.displacement != 0)
+                    {
+                        std::cout << ((inst.reg1.displacement < 0) ? "-#" : "+#") << std::abs(inst.reg1.displacement);
+                    }
+                    std::cout << "]";
                 }
                 else
                 {
@@ -106,7 +111,12 @@ int main(int argc, const char* argv[])
                                     std::cout << "dword";
                                     break;
                             }
-                            std::cout << " [%" << rlang::alvm::Register::RegisterStr[(std::size_t)inst.reg2.type] << "]";
+                            std::cout << " [%" << rlang::alvm::Register::RegisterStr[(std::size_t)inst.reg2.type];
+                            if (inst.reg2.displacement != 0)
+                            {
+                                std::cout << ((inst.reg2.displacement < 0) ? "-#" : "+#") << std::abs(inst.reg2.displacement);
+                            }
+                            std::cout << "]";
                     }
                     else
                     {
@@ -117,8 +127,8 @@ int main(int argc, const char* argv[])
                 {
                     if (inst.opcode != rlang::alvm::OpCode::Push &&
                         inst.opcode != rlang::alvm::OpCode::End &&
-                        inst.opcode != rlang::alvm::OpCode::PrintStr &&
-                        inst.opcode != rlang::alvm::OpCode::PrintInt &&
+                        inst.opcode != rlang::alvm::OpCode::PStr &&
+                        inst.opcode != rlang::alvm::OpCode::PInt &&
                         inst.opcode != rlang::alvm::OpCode::Inc &&
                         inst.opcode != rlang::alvm::OpCode::Dec) std::cout << ", #" << inst.imm32;
                 }

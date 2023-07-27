@@ -16,9 +16,9 @@ namespace testman::alvm {
 
         std::vector<Instruction> code =
         {
-        Instruction{.opcode = OpCode::Mov, .reg1 = {RegType::R0}, .reg2 = {RegType::Sp}},
+        Instruction{.opcode = OpCode::Mov, .reg1 = {RegType::R0}, .reg2 = {RegType::SP}},
                 Instruction{.opcode = OpCode::Db, .bytes = std::to_bytes("it workin\n")},
-                Instruction{.opcode = OpCode::PrintStr, .reg1 = {RegType::R0}},
+                Instruction{.opcode = OpCode::PStr, .reg1 = {RegType::R0}},
                 Instruction{.opcode = OpCode::End}
         };
 

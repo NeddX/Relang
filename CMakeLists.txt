@@ -3,11 +3,6 @@ cmake_minimum_required(VERSION 3.20)
 project("ALVM")
 
 if (UNIX)
-    if (UNIX AND NOT APPLE)
-        set(CMAKE_C_COMPILER clang)
-        set(CMAKE_CXX_COMPILER clang++)
-    endif()
-
     set(CMAKE_C_FLAGS "-m32")
     set(CMAKE_CXX_FLAGS "-m32")
 

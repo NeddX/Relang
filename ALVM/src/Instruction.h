@@ -17,8 +17,8 @@ namespace rlang::alvm {
         Div,
         Inc,
         Dec,
-        PrintInt,
-        PrintStr,
+        PInt,
+        PStr,
         Cmp,
         Mov,
         Jump,
@@ -28,6 +28,20 @@ namespace rlang::alvm {
         Return,
         Malloc,
         Free,
+        Lrzf,
+        Srzf,
+        Store,
+        Load,
+        Jz,
+        Jnz,
+        Js,
+        Jns,
+        Jo,
+        Jno,
+        Jc,
+        Jcn,
+
+        Jl,
 
         Nop
     };
@@ -64,6 +78,19 @@ namespace rlang::alvm {
             "ret",
             "malloc",
             "free",
+            "lrzf",
+            "srzf",
+            "store",
+            "load",
+            "jz",
+            "jnz",
+            "js",
+            "jns",
+            "jo",
+            "jno",
+            "jc",
+            "jcn",
+            "jl",
             "nop"
         };
     };

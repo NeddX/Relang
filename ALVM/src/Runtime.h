@@ -42,7 +42,20 @@ namespace rlang::alvm {
 			&ALVM::Return,
 			&ALVM::Malloc,
 			&ALVM::Free,
+			&ALVM::Lrzf,
+			&ALVM::Srzf,
+			&ALVM::Store,
+			&ALVM::Load,
+			&ALVM::JmpIfZero,
+			&ALVM::JmpIfNotZero,
+			&ALVM::JmpIfNegative,
+			&ALVM::JmpIfNotNegative,
+			&ALVM::JmpIfOverflow,
+			&ALVM::JmpIfNotOverflow,
+			&ALVM::JmpIfCarry,
+			&ALVM::JmpIfNotCarry,
 
+			&ALVM::JmpIfSignedLessThan,
 			&ALVM::Nop
 	};
 	public:
@@ -52,7 +65,6 @@ namespace rlang::alvm {
 		void Run(const std::vector<Instruction>& code, std::int32_t& result);
 
 	private:
-		void Nop();
 		void End();
 		void Push();
 		void Pop();
@@ -73,6 +85,21 @@ namespace rlang::alvm {
 		void Return();
 		void Malloc();
 		void Free();
+		void Lrzf();
+		void Srzf();
+		void Store();
+		void Load();
+		void JmpIfZero();
+		void JmpIfNotZero();
+		void JmpIfNegative();
+		void JmpIfNotNegative();
+		void JmpIfOverflow();
+		void JmpIfNotOverflow();
+		void JmpIfCarry();
+		void JmpIfNotCarry();
+
+		void JmpIfSignedLessThan();
+		void Nop();
 	};
 }
 
