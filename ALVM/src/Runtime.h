@@ -19,7 +19,7 @@ namespace rlang::alvm {
 		Instruction* m_Pc = nullptr;
 		std::vector<std::uint8_t> m_Stack;
 		Registers m_Registers;
-		std::uint32_t& m_Sp;
+		std::uintptr_t& m_Sp;
 		const std::vector<InstructionHandler> m_Instructions =
 		{
 			&ALVM::End,

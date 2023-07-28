@@ -103,11 +103,11 @@ namespace rlang::alvm {
 	struct Registers
 	{
 	private:
-		std::array<std::uint32_t, (std::size_t)RegType::Nul> m_Buffer = { 0 };
+		std::array<std::uintptr_t, (std::size_t)RegType::Nul> m_Buffer = { 0 };
 
 	public:
-		inline std::uint32_t& operator[](std::size_t index) { return m_Buffer[index]; }
-		inline std::uint32_t& operator[](RegType reg) { return m_Buffer[(std::size_t)reg]; }
+		inline std::uintptr_t& operator[](std::size_t index) { return m_Buffer[index]; }
+		inline std::uintptr_t& operator[](RegType reg) { return m_Buffer[(std::size_t)reg]; }
 	};
 }
 

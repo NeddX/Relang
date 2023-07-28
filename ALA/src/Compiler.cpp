@@ -172,7 +172,7 @@ namespace rlang::rmc {
                                 {
                                     if (tokens[i + 2].type == TokenType::Number)
                                     {
-                                        DataInfo inf = { .addr = m_DataSection.size(), .size = 4, .value = m_DataSection.size(), .type = TokenType::Number };
+                                        DataInfo inf = { .addr = m_DataSection.size(), .size = 4, .value = (std::uint32_t)m_DataSection.size(), .type = TokenType::Number };
                                         m_DataNameTable[tokens[i + 1].text] = inf;
                                         m_DataSection.resize(m_DataSection.size() + 4);
                                         *(std::uint32_t*)(m_DataSection.data() + inf.addr) = (std::uint32_t)std::stoul(tokens[i + 2].text);

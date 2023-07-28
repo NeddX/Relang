@@ -26,6 +26,9 @@
 #define Push32(u32)								\
 	m_Sp -= 4;									\
 	*(std::uint32_t*)m_Sp = (std::uint32_t)u32
+#define Push64(u64)	\
+	m_Sp -= 8; 	\
+	*(std::uint64_t*)m_Sp = (std::uint64_t)u64
 #define Pop8(u8)								\
 	u8 = *(std::uint8_t*)m_Sp;					\
 	m_Sp++
@@ -35,6 +38,9 @@
 #define Pop32(u32)								\
 	u32 = *(std::uint32_t*)m_Sp;				\
 	m_Sp += 4
+#define Pop64(u64)	\
+	u64 = *(std::uint64_t*)m_Sp; \
+	m_Sp += 8
 #define Pop8s()									\
 	m_Sp++
 #define Pop16s()								\
@@ -61,9 +67,9 @@ namespace rlang::alvm {
 		m_Stack.resize(m_Stack.size() + STACK_SIZE);
 
 		// Init registers
-		m_Registers[RegType::SS] = (std::uint32_t)m_Stack.data() + data.size();
+		m_Registers[RegType::SS] = (std::uintptr_t)m_Stack.data() + data.size();
 		m_Registers[RegType::SP] = m_Registers[RegType::SS] + STACK_SIZE;
-		m_Registers[RegType::DS] = (std::uint32_t)m_Stack.data();
+		m_Registers[RegType::DS] = (std::uintptr_t)m_Stack.data();
 	}
 
 	void ALVM::Run(const std::vector<Instruction>& code, std::int32_t& result)
@@ -71,7 +77,7 @@ namespace rlang::alvm {
 		m_Bytecode = ((std::vector<Instruction>&)code).data();
 		m_Pc = m_Bytecode;
 
-		m_Registers[RegType::CS] = (std::uint32_t)m_Bytecode;
+		m_Registers[RegType::CS] = (std::uintptr_t)m_Bytecode;
 
 		while (m_Pc)
 			(this->*m_Instructions[(std::size_t)m_Pc->opcode])();
@@ -659,13 +665,13 @@ namespace rlang::alvm {
 
 	void ALVM::Call()
 	{
-		Push32((std::uintptr_t)(m_Pc + 1));
+		Push64((std::uintptr_t)(m_Pc + 1));
 		Jump();
 	}
 
 	void ALVM::Return()
 	{
-		Pop32(std::uint32_t addr);
+		Pop64(std::uintptr_t addr);
 		//Instruction* addr = (Instruction*)(std::uintptr_t)Pop32();
 		m_Pc = (Instruction*)addr;
 	}
@@ -679,24 +685,24 @@ namespace rlang::alvm {
 				switch (m_Pc->size)
 				{
 					case 8:
-						m_Registers[RegType::R0] = (std::uint32_t)std::malloc((std::size_t)ReadFrom(GetRegVal(m_Pc->reg1)));
+						m_Registers[RegType::R0] = (std::uintptr_t)std::malloc((std::size_t)ReadFrom(GetRegVal(m_Pc->reg1)));
 						break;
 					case 16:
-						m_Registers[RegType::R0] = (std::uint32_t)std::malloc((std::size_t)ReadFrom16(GetRegVal(m_Pc->reg1)));
+						m_Registers[RegType::R0] = (std::uintptr_t)std::malloc((std::size_t)ReadFrom16(GetRegVal(m_Pc->reg1)));
 						break;
 					case 32:
-						m_Registers[RegType::R0] = (std::uint32_t)std::malloc((std::size_t)ReadFrom32(GetRegVal(m_Pc->reg1)));
+						m_Registers[RegType::R0] = (std::uintptr_t)std::malloc((std::size_t)ReadFrom32(GetRegVal(m_Pc->reg1)));
 						break;
 				}
 			}
 			else
 			{
-				m_Registers[RegType::R0] = (std::uint32_t)std::malloc((std::size_t)GetRegVal(m_Pc->reg1));
+				m_Registers[RegType::R0] = (std::uintptr_t)std::malloc((std::size_t)GetRegVal(m_Pc->reg1));
 			}
 		}
 		else
 		{
-			m_Registers[RegType::R0] = (std::uint32_t)std::malloc((std::size_t)m_Pc->imm32);
+			m_Registers[RegType::R0] = (std::uintptr_t)std::malloc((std::size_t)m_Pc->imm32);
 		}
 		m_Pc++;
 	}

@@ -2,9 +2,12 @@ cmake_minimum_required(VERSION 3.20)
 
 project("ALVM")
 
+#set(CMAKE_C_COMPILER clang)
+#set(CMAKE_CXX_COMPILER clang++)
+
 if (UNIX)
-    set(CMAKE_C_FLAGS "-m32")
-    set(CMAKE_CXX_FLAGS "-m32")
+	#set(CMAKE_C_FLAGS "-m32")
+	#set(CMAKE_CXX_FLAGS "-m32")
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND CMAKE_C_COMPILER_ID MATCHES "Clang" OR
     CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_C_COMPILER_ID MATCHES "GNU")
