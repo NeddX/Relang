@@ -9,12 +9,21 @@
 #include "Utils.h"
 
 namespace rlang::rmc {
+	enum DataType
+	{
+	Undefined,
+	Byte,
+	Word,
+	DWord,
+	QWord
+	};
 	struct DataInfo
 	{
-		std::size_t addr = 0;
+		std::uintptr_t addr = 0;
 		std::size_t size = 0;
-		std::uint32_t value = 0;
-		TokenType type = TokenType::Whitespace;
+		std::uint64_t value = 0;
+		bool constant = false;
+		DataType type = DataType::Undefined;
 	};
 
 	struct Compiler

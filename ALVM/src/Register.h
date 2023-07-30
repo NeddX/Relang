@@ -55,7 +55,7 @@ namespace rlang::alvm {
 		RegType type = RegType::Nul;
 		bool ptr = false;
 		std::int8_t size = 32;
-		std::int32_t displacement = 0;
+		std::int64_t displacement = 0;
 
 	public:
 		inline static const std::vector<std::string> RegisterStr =

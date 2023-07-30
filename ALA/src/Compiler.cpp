@@ -13,6 +13,45 @@
 
 DISABLE_ENUM_WARNING_BEGIN
 
+#define COMPILE_ERROR(token, msg)                                       \
+    std::cerr << "Compile Error @ line (" << token.line << ", " << token.cur << "): " \
+    << msg << "\n";                                                     \
+    std::exit(-1);
+
+static constexpr inline std::uint8_t SizeOfDataTypeB(rlang::rmc::DataType type)
+{
+    switch (type)
+    {
+        case rlang::rmc::Byte:
+            return 1;
+        case rlang::rmc::Word:
+            return 2;
+        case rlang::rmc::DWord:
+            return 4;
+        case rlang::rmc::QWord:
+            return 8;
+        default:
+            return 0;
+    }
+}
+
+static constexpr inline std::uint8_t SizeOfDataType(rlang::rmc::DataType type)
+{
+    switch (type)
+    {
+        case rlang::rmc::Byte:
+            return 8;
+        case rlang::rmc::Word:
+            return 16;
+        case rlang::rmc::DWord:
+            return 32;
+        case rlang::rmc::QWord:
+            return 64;
+        default:
+            return 0;
+    }
+}
+
 namespace rlang::rmc {
     std::unordered_map<std::string, DataInfo> Compiler::m_DataNameTable;
     std::unordered_map<std::string, std::pair<std::size_t, std::unordered_map<std::string, std::size_t>>> Compiler::m_LabelAddressMap;
@@ -117,31 +156,373 @@ namespace rlang::rmc {
                         if (m_CurrentSection == "data")
                         {
                             std::string inst = utils::string::ToLowerCopy(tokens[i].text);
-                            if (inst == "str")
+                            std::size_t inst_token_id = i;
+                            if (inst == "byte" || inst == "word" || inst == "dword" || inst == "qword")
                             {
                                 if (tokens[i + 1].type == TokenType::Identifier)
                                 {
-                                    if (tokens[i + 2].type == TokenType::StringLiteral)
+                                    if (m_DataNameTable.find(tokens[i + 1].text) != m_DataNameTable.end())
                                     {
-                                        m_DataNameTable[tokens[i + 1].text] = { .addr = m_DataSection.size(), .type = TokenType::StringLiteral };
-                                        m_DataSection.insert(m_DataSection.end(), tokens[i + 2].text.begin(), tokens[i + 2].text.end());
-                                        m_DataSection.push_back(0); // Null term
-                                        m_DataNameTable[tokens[i + 1].text].size = m_DataSection.size() - m_DataNameTable[tokens[i + 1].text].addr;
+                                        COMPILE_ERROR(tokens[i + 1],
+                                                      "Attempted to redefine '" << tokens[i + 1].text << "'.");
                                     }
-                                    else
+
+                                    // tokens[i + 2] should be the first element
+                                    DataInfo inf =
                                     {
-                                        std::cerr << "Compile Error @ line (" << tokens[i + 2].line << ", " << tokens[i + 2].cur << "): "
-                                                  << "Expected a String after '" << tokens[i + 1].text << "'\n";
-                                        std::exit(-1);
+                                        .addr = m_DataSection.size(),
+                                        .size = 0,
+                                        .value = (std::uint64_t)m_DataSection.size(),
+                                    };
+
+                                    i += 2;
+                                    bool run = true;
+                                    if (inst == "byte")
+                                    {
+                                        inf.type = DataType::Byte;
+
+                                        if (tokens[i].type != TokenType::Number &&
+                                            tokens[i].type != TokenType::StringLiteral)
+                                        {
+                                            COMPILE_ERROR(tokens[i],
+                                                          "Expected a NumberLiteral or a StringLiteral but got "
+                                                          << Token::TokenStr[(std::size_t)tokens[i].type] << " instead.");
+                                        }
+
+                                        while (run)
+                                        {
+                                            switch (tokens[i].type)
+                                            {
+                                                case TokenType::StringLiteral:
+                                                    m_DataSection.insert(m_DataSection.end(), tokens[i].text.begin(), tokens[i].text.end());
+                                                    inf.size += tokens[i].text.size();
+                                                        break;
+                                                case TokenType::Number:
+                                                    m_DataSection.resize(m_DataSection.size() + 1);
+                                                    *(std::uint8_t*)(m_DataSection.data() + inf.addr + inf.size) = (std::uint8_t)std::stoul(tokens[i].text);
+                                                    inf.size++;
+                                                    break;
+                                                case TokenType::Operator:
+                                                    if (tokens[i].text == ",")
+                                                    {
+                                                        i++;
+                                                        continue;
+                                                    }
+                                                    else if (tokens[i].text == ".")
+                                                    {
+                                                        goto byte_def_case;
+                                                    }
+                                                    else
+                                                    {
+                                                        // compile error: bad operator
+                                                        COMPILE_ERROR(tokens[i], "Expected a comma (,) but got a " << tokens[i].text << " instead.");
+                                                    }
+                                                    break;
+                                                default:
+byte_def_case:
+                                                    if (tokens[i].type == TokenType::Identifier &&
+                                                        tokens[i++].text == "fill")
+                                                    {
+                                                        if (tokens[i].type == TokenType::Operator &&
+                                                            tokens[i++].text == "(")
+                                                        {
+                                                            if (tokens[i].type == TokenType::Number)
+                                                            {
+                                                                if (tokens[++i].type != TokenType::Operator &&
+                                                                    tokens[i].text != ")")
+                                                                {
+                                                                    COMPILE_ERROR(tokens[i], "Expected a ')'.");
+                                                                }
+                                                                std::size_t size = std::stoul(tokens[i - 1].text);
+                                                                std::uint8_t data =
+                                                                    *((std::uint8_t*)m_DataSection.data() + inf.size - 1);
+                                                                m_DataSection.resize(inf.size + size);
+                                                                for (auto x = 0; x < size; ++x)
+                                                                    *((std::uint8_t*)m_DataSection.data() + inf.size + x) = data;
+                                                                inf.size += size;
+                                                            }
+                                                            else
+                                                            {
+                                                                COMPILE_ERROR(tokens[i - 1], "fill function takes in a NumberLiteral as an argument.");
+                                                            }
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        run = false;
+                                                        m_DataNameTable[tokens[inst_token_id + 1].text] = inf;
+                                                    }
+                                                    break;
+                                            }
+                                            if (run) ++i;
+                                            else --i;
+                                        }
+                                    }
+                                    else if (inst == "word")
+                                    {
+                                        inf.type = DataType::Word;
+
+                                        if (tokens[i].type != TokenType::Number &&
+                                            tokens[i].type != TokenType::StringLiteral)
+                                        {
+                                            COMPILE_ERROR(tokens[i],
+                                                          "Expected a NumberLiteral or a StringLiteral but got "
+                                                          << Token::TokenStr[(std::size_t)tokens[i].type] << " instead.");
+                                        }
+
+                                        while (run)
+                                        {
+                                            switch (tokens[i].type)
+                                            {
+                                                case TokenType::StringLiteral:
+                                                    COMPILE_ERROR(tokens[i], "Wide characters are not yet supported.");
+                                                    break;
+                                                case TokenType::Number:
+                                                    m_DataSection.resize(m_DataSection.size() + 2);
+                                                    *(std::uint16_t*)(m_DataSection.data() + inf.addr + inf.size) = (std::uint16_t)std::stoul(tokens[i].text);
+                                                    inf.size += 2;
+                                                    break;
+                                                case TokenType::Operator:
+                                                    if (tokens[i].text == ",")
+                                                    {
+                                                        i++;
+                                                        continue;
+                                                    }
+                                                    else if (tokens[i].text == ".")
+                                                    {
+                                                        goto word_def_case;
+                                                    }
+                                                    else
+                                                    {
+                                                        // compile error: bad operator
+                                                        COMPILE_ERROR(tokens[i], "Expected a comma (,) but got a " << tokens[i].text << " instead.");
+                                                    }
+                                                    break;
+                                                default:
+word_def_case:
+                                                    if (tokens[i].type == TokenType::Identifier &&
+                                                        tokens[i++].text == "fill")
+                                                    {
+                                                        if (tokens[i].type == TokenType::Operator &&
+                                                            tokens[i++].text == "(")
+                                                        {
+                                                            if (tokens[i].type == TokenType::Number)
+                                                            {
+                                                                if (tokens[++i].type != TokenType::Operator &&
+                                                                    tokens[i].text != ")")
+                                                                {
+                                                                    COMPILE_ERROR(tokens[i], "Expected a ')'.");
+                                                                }
+                                                                std::size_t size = std::stoul(tokens[i - 1].text);
+                                                                std::uint16_t data =
+                                                                    *((std::uint16_t*)(std::uintptr_t)(m_DataSection.data() + inf.size - 2));
+                                                                m_DataSection.resize(inf.size + size * 2);
+                                                                for (auto x = 0; x < size; ++x)
+                                                                {
+                                                                    *((std::uint16_t*)(std::uintptr_t)(m_DataSection.data() + inf.size + (x * 2)))
+                                                                        = data;
+                                                                }
+                                                                inf.size += size * 2;                                                            }
+                                                            else
+                                                            {
+                                                                COMPILE_ERROR(tokens[i - 1], "fill function takes in a NumberLiteral as an argument.");
+                                                            }
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        run = false;
+                                                        m_DataNameTable[tokens[inst_token_id + 1].text] = inf;
+                                                    }
+                                                    break;
+                                            }
+                                            if (run) ++i;
+                                            else --i;
+                                        }
+                                    }
+                                    else if (inst == "dword")
+                                    {
+                                        inf.type = DataType::DWord;
+
+                                        if (tokens[i].type != TokenType::Number)
+                                        {
+                                            COMPILE_ERROR(tokens[i],
+                                                          "Expected a NumberLiteral but got "
+                                                          << Token::TokenStr[(std::size_t)tokens[i].type] << " instead.");
+                                        }
+
+                                        while (run)
+                                        {
+                                            switch (tokens[i].type)
+                                            {
+                                                case TokenType::StringLiteral:
+                                                    COMPILE_ERROR(tokens[i], "Expected a NumberLiteral but got a StringLiteral instead.");
+                                                    break;
+                                                case TokenType::Number:
+                                                    m_DataSection.resize(m_DataSection.size() + 4);
+                                                    *(std::uint32_t*)(m_DataSection.data() + inf.addr + inf.size) = (std::uint32_t)std::stoul(tokens[i].text);
+                                                    inf.size += 4;
+                                                    break;
+                                                case TokenType::Operator:
+                                                    if (tokens[i].text == ",")
+                                                    {
+                                                        i++;
+                                                        continue;
+                                                    }
+                                                    else if (tokens[i].text == ".")
+                                                    {
+                                                        goto dword_def_case;
+                                                    }
+                                                    else
+                                                    {
+                                                        // compile error: bad operator
+                                                        COMPILE_ERROR(tokens[i], "Expected a comma (,) but got a " << tokens[i].text << " instead.");
+                                                    }
+                                                    break;
+                                                default:
+dword_def_case:
+                                                    if (tokens[i].type == TokenType::Identifier &&
+                                                        tokens[i++].text == "fill")
+                                                    {
+                                                        if (tokens[i].type == TokenType::Operator &&
+                                                            tokens[i++].text == "(")
+                                                        {
+                                                            if (tokens[i].type == TokenType::Number)
+                                                            {
+                                                                if (tokens[++i].type != TokenType::Operator &&
+                                                                    tokens[i].text != ")")
+                                                                {
+                                                                    COMPILE_ERROR(tokens[i], "Expected a ')'.");
+                                                                }
+                                                                std::size_t size = std::stoul(tokens[i - 1].text);
+                                                                std::uint32_t data =
+                                                                    *((std::uint32_t*)(std::uintptr_t)(m_DataSection.data() + inf.size - 4));
+                                                                m_DataSection.resize(inf.size + size * 4);
+                                                                for (auto x = 0; x < size; ++x)
+                                                                {
+                                                                    *((std::uint32_t*)(std::uintptr_t)(m_DataSection.data() + inf.size + (x * 4)))
+                                                                        = data;
+                                                                }
+                                                                inf.size += size * 4;                                                            }
+                                                            else
+                                                            {
+                                                                COMPILE_ERROR(tokens[i - 1], "fill function takes in a NumberLiteral as an argument.");
+                                                            }
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        run = false;
+                                                        m_DataNameTable[tokens[inst_token_id + 1].text] = inf;
+                                                    }
+                                                    break;
+                                            }
+                                            if (run) ++i;
+                                            else --i;
+                                        }
+                                    }
+                                    else if (inst == "qword")
+                                    {
+                                        inf.type = DataType::QWord;
+
+                                        if (tokens[i].type != TokenType::Number)
+                                        {
+                                            COMPILE_ERROR(tokens[i],
+                                                          "Expected a NumberLiteral but got "
+                                                          << Token::TokenStr[(std::size_t)tokens[i].type] << " instead.");
+                                        }
+
+                                        while (run)
+                                        {
+                                            switch (tokens[i].type)
+                                            {
+                                                case TokenType::StringLiteral:
+                                                    m_DataSection.insert(m_DataSection.end(), tokens[i].text.begin(), tokens[i].text.end());
+                                                    inf.size += tokens[i].text.size();
+                                                    break;
+                                                case TokenType::Number:
+                                                    m_DataSection.resize(m_DataSection.size() + 8);
+                                                    *(std::uint64_t*)(m_DataSection.data() + inf.addr + inf.size) = std::stoul(tokens[i].text);
+                                                    inf.size += 8;
+                                                    break;
+                                                case TokenType::Operator:
+                                                    if (tokens[i].text == ",")
+                                                    {
+                                                        i++;
+                                                        continue;
+                                                    }
+                                                    else if (tokens[i].text == ".")
+                                                    {
+                                                        goto qword_def_case;
+                                                    }
+                                                    else
+                                                    {
+                                                        // compile error: bad operator
+                                                        COMPILE_ERROR(tokens[i], "Expected a comma (,) but got a " << tokens[i].text << " instead.");
+                                                    }
+                                                    break;
+                                                default:
+qword_def_case:
+                                                    if (tokens[i].type == TokenType::Identifier &&
+                                                        tokens[i++].text == "fill")
+                                                    {
+                                                        if (tokens[i].type == TokenType::Operator &&
+                                                            tokens[i++].text == "(")
+                                                        {
+                                                            if (tokens[i].type == TokenType::Number)
+                                                            {
+                                                                if (tokens[++i].type != TokenType::Operator &&
+                                                                    tokens[i].text != ")")
+                                                                {
+                                                                    COMPILE_ERROR(tokens[i], "Expected a ')'.");
+                                                                }
+                                                                std::size_t size = std::stoul(tokens[i - 1].text);
+                                                                std::uint64_t data =
+                                                                    *((std::uint64_t*)(std::uintptr_t)(m_DataSection.data() + inf.size - 8));
+                                                                m_DataSection.resize(inf.size + size * 8);
+                                                                for (auto x = 0; x < size; ++x)
+                                                                {
+                                                                    *((std::uint64_t*)(std::uintptr_t)(m_DataSection.data() + inf.size + (x * 8)))
+                                                                        = data;
+                                                                }
+                                                                inf.size += size * 8;                                                            }
+                                                            else
+                                                            {
+                                                                COMPILE_ERROR(tokens[i - 1], "fill function takes in a NumberLiteral as an argument.");
+                                                            }
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        run = false;
+                                                        m_DataNameTable[tokens[inst_token_id + 1].text] = inf;
+                                                    }
+                                                    break;
+                                            }
+                                            if (run) ++i;
+                                            else --i;
+                                        }
                                     }
                                 }
                                 else
                                 {
                                     std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): "
-                                              << "Expected an Identifier after str.\n";
+                                              << "Expected an Identifier after '" << tokens[i].text << "'.\n";
                                     std::exit(-1);
                                 }
-                                i += 2;
+                            }
+                            else if (inst == "align")
+                            {
+                                if (tokens[i + 1].type == TokenType::Number)
+                                {
+                                    m_DataSection.resize(m_DataSection.size() + std::stoul(tokens[i + 1].text));
+                                }
+                                else
+                                {
+                                    std::cerr << "Compile Error @ line (" << tokens[i + 2].line << ", " << tokens[i + 2].cur << "): "
+                                              << "Expected a number literal after '" << tokens[i + 1].text << "'\n";
+                                    std::exit(-1);
+                                }
                             }
                             else if (inst == "const")
                             {
@@ -149,7 +530,13 @@ namespace rlang::rmc {
                                 {
                                     if (tokens[i + 2].type == TokenType::Number)
                                     {
-                                        m_DataNameTable[tokens[i + 1].text] = { .size = 4, .value = (std::uint32_t)std::stoul(tokens[i + 2].text), .type = TokenType::Number };
+                                        m_DataNameTable[tokens[i + 1].text] =
+                                        {
+                                            .size = 4,
+                                            .value = std::stoul(tokens[i + 2].text),
+                                            .constant = true,
+                                            .type = DataType::QWord
+                                        };
                                     }
                                     else
                                     {
@@ -165,38 +552,6 @@ namespace rlang::rmc {
                                     std::exit(-1);
                                 }
                                 i += 2;
-                            }
-                            else if (inst == "var")
-                            {
-                                if (tokens[i + 1].type == TokenType::Identifier)
-                                {
-                                    if (tokens[i + 2].type == TokenType::Number)
-                                    {
-                                        DataInfo inf = { .addr = m_DataSection.size(), .size = 4, .value = (std::uint32_t)m_DataSection.size(), .type = TokenType::Number };
-                                        m_DataNameTable[tokens[i + 1].text] = inf;
-                                        m_DataSection.resize(m_DataSection.size() + 4);
-                                        *(std::uint32_t*)(m_DataSection.data() + inf.addr) = (std::uint32_t)std::stoul(tokens[i + 2].text);
-                                    }
-                                    else
-                                    {
-                                        std::cerr << "Compile Error @ line (" << tokens[i + 2].line << ", " << tokens[i + 2].cur << "): "
-                                                  << "Expected an Integer after '" << tokens[i + 1].text << "'\n";
-                                        std::exit(-1);
-                                    }
-                                }
-                                else
-                                {
-                                    std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): "
-                                              << "Expected an Identifier after const.\n";
-                                    std::exit(-1);
-                                }
-                                i += 2;
-                            }
-                            else
-                            {
-                                std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): Unknown instruction '"
-                                          << tokens[i].text << "' in " << m_CurrentSection << " section.\n";
-                                std::exit(-1);
                             }
                             break;
                         }
@@ -294,7 +649,7 @@ namespace rlang::rmc {
                         }
                         else if (ptr)
                         {
-                            if (operand_count <= 0)
+                            if (operand_count == 0)
                             {
                                 current_instruction.reg1.displacement = -(std::int32_t)std::stoul(tokens[i + 1].text);
                             }
@@ -329,7 +684,7 @@ namespace rlang::rmc {
                         {
                             if (m_LabelAddressMap.find(tokens[i + 1].text) != m_LabelAddressMap.end())
                             {
-                                current_instruction.imm32 = (std::uint32_t)m_LabelAddressMap[tokens[i + 1].text].first;
+                                current_instruction.imm64 = (std::uint64_t)m_LabelAddressMap[tokens[i + 1].text].first;
                             }
                             else
                             {
@@ -377,7 +732,7 @@ namespace rlang::rmc {
                                      m_LabelAddressMap[current_label].second.find(tokens[i + 1].text) !=
                                      m_LabelAddressMap[current_label].second.end())
                                 {
-                                    current_instruction.imm32 = (std::uint32_t)m_LabelAddressMap[current_label].second[tokens[i + 1].text];
+                                    current_instruction.imm64 = (std::uint64_t)m_LabelAddressMap[current_label].second[tokens[i + 1].text];
                                     i++;
                                     break;
                                 }
@@ -415,7 +770,7 @@ namespace rlang::rmc {
                 }
                 case TokenType::Number:
                 {
-                    current_instruction.imm32 = (std::uint32_t)std::stoul(tokens[i].text);
+                    current_instruction.imm64 = std::stoull(tokens[i].text);
                     break;
                 }
                 case TokenType::Identifier:
@@ -433,17 +788,75 @@ namespace rlang::rmc {
                     {
                         bit_size = 32;
                     }
+                    else if (tokens[i].text == "qword")
+                    {
+                        bit_size = 64;
+                    }
+                    else if (tokens[i].text == "sizeof")
+                    {
+                        if (tokens[i + 1].type == TokenType::Operator && tokens[i + 1].text == "(")
+                        {
+                            if (tokens[++i + 1].type != TokenType::Identifier)
+                            {
+                                COMPILE_ERROR(tokens[i + 1], "sizeof operator takes an identifier as an argument.");
+                            }
+
+                            auto it = m_DataNameTable.find(tokens[++i].text);
+                            if (it == m_DataNameTable.end())
+                            {
+                                COMPILE_ERROR(tokens[i], "'" << tokens[i].text << "' doesn't exist in the current context.");
+                            }
+
+                            current_instruction.imm64 = it->second.size;
+                        }
+                    }
+                    else if (tokens[i].text == "lengthof")
+                    {
+                        if (tokens[i + 1].type == TokenType::Operator && tokens[i + 1].text == "(")
+                        {
+                            if (tokens[++i + 1].type != TokenType::Identifier)
+                            {
+                                COMPILE_ERROR(tokens[i + 1], "lengthof operator takes an identifier as an argument.");
+                            }
+
+                            auto it = m_DataNameTable.find(tokens[++i].text);
+                            if (it == m_DataNameTable.end())
+                            {
+                                COMPILE_ERROR(tokens[i], "'" << tokens[i].text << "' doesn't exist in the current context.");
+                            }
+                            current_instruction.imm64 = it->second.size / SizeOfDataTypeB(it->second.type);
+                        }
+                    }
+                    else if (tokens[i].text == "offsetof")
+                    {
+                        if (tokens[i + 1].type == TokenType::Operator && tokens[i + 1].text == "(")
+                        {
+                            if (tokens[++i + 1].type != TokenType::Identifier)
+                            {
+                                COMPILE_ERROR(tokens[i + 1], "offsetof operator takes an identifier as an argument.");
+                            }
+
+                            auto it = m_DataNameTable.find(tokens[++i].text);
+                            if (it == m_DataNameTable.end())
+                            {
+                                COMPILE_ERROR(tokens[i], "'" << tokens[i].text << "' doesn't exist in the current context.");
+                            }
+
+                            current_instruction.imm64 = it->second.addr;
+                        }
+                    }
                     else if (auto it = m_DataNameTable.find(tokens[i].text); it != m_DataNameTable.end())
                     {
                         switch (current_instruction.opcode)
                         {
+                            case alvm::OpCode::System:
                             case alvm::OpCode::PStr:
                                 if (operand_count == 0)
                                 {
-                                    if (it->second.type == TokenType::StringLiteral)
+                                    if (it->second.type == DataType::Byte)
                                     {
                                         current_instruction.reg1 =
-                                            { .type = alvm::RegType::DS, .ptr = true, .displacement = (std::int32_t)it->second.addr };
+                                            { .type = alvm::RegType::DS, .ptr = true, .displacement = (std::int64_t)it->second.addr };
                                     }
                                     else
                                     {
@@ -471,9 +884,25 @@ namespace rlang::rmc {
                             case alvm::OpCode::Push:
                                 if (operand_count == 0)
                                 {
-                                    if (it->second.type == TokenType::Number)
+                                    if (it->second.type != DataType::Undefined)
                                     {
-                                        current_instruction.imm32 = it->second.value;
+                                        if (it->second.constant)
+                                        {
+                                            current_instruction.imm64 = it->second.value;
+                                        }
+                                        else
+                                        {
+                                            if (operand_count == 0)
+                                            {
+                                                current_instruction.reg1 = { .type = alvm::RegType::DS, .ptr = true, .displacement = (std::int64_t)it->second.addr };
+                                                current_instruction.size = SizeOfDataType(it->second.type);
+                                            }
+                                            else
+                                            {
+                                                current_instruction.reg2 = { .type = alvm::RegType::DS, .ptr = true, .displacement = (std::int64_t)it->second.addr };
+                                                current_instruction.size = SizeOfDataType(it->second.type);
+                                            }
+                                        }
                                     }
                                     else
                                     {
@@ -504,7 +933,7 @@ namespace rlang::rmc {
                                     if (ptr)
                                     {
                                         m_CompiledCode.push_back(alvm::Instruction { .opcode = alvm::OpCode::Push, .reg1 = { alvm::RegType::R0 } });
-                                        m_CompiledCode.push_back(alvm::Instruction { .opcode = alvm::OpCode::Mov, .imm32 = it->second.value, .reg1 = { alvm::RegType::R0 } });
+                                        m_CompiledCode.push_back(alvm::Instruction { .opcode = alvm::OpCode::Mov, .imm64 = it->second.value, .reg1 = { alvm::RegType::R0 } });
                                         current_instruction.reg1 = { alvm::RegType::R0, true };
                                         m_InstEpilogue.push_back(alvm::Instruction { .opcode = alvm::OpCode::Pop, .reg1 = { alvm::RegType::R0 } });
                                     }
@@ -525,13 +954,13 @@ namespace rlang::rmc {
                                     if (ptr)
                                     {
                                         m_CompiledCode.push_back(alvm::Instruction { .opcode = alvm::OpCode::Push, .reg1 = { alvm::RegType::R0 } });
-                                        m_CompiledCode.push_back(alvm::Instruction { .opcode = alvm::OpCode::Mov, .imm32 = it->second.value, .reg1 = { alvm::RegType::R0 } });
+                                        m_CompiledCode.push_back(alvm::Instruction { .opcode = alvm::OpCode::Mov, .imm64 = it->second.value, .reg1 = { alvm::RegType::R0 } });
                                         current_instruction.reg2 = { alvm::RegType::R0, true };
                                         m_InstEpilogue.push_back(alvm::Instruction { .opcode = alvm::OpCode::Pop, .reg1 = { alvm::RegType::R0 } });
                                     }
                                     else
                                     {
-                                        current_instruction.imm32 = it->second.value;
+                                        current_instruction.imm64 = it->second.value;
                                     }
                                 }
                                 break;
@@ -590,66 +1019,5 @@ namespace rlang::rmc {
             : alvm::RegType::Nul;
     }
 }
-
-/*
-namespace amcc
-{
-    ByteCode Compiler::Compile(const TokenList& tokens)
-    {
-        Instruction* inst = new Instruction();
-        ByteCode m_CompiledCode;
-        map<string, std::size_t> labelAddresses;
-        int i = 0;
-        for (auto& l : tokens)
-        {
-            if (l.type == INST) i++;
-            else if (l.type == LABEL_DEFINITION) labelAddresses[l.text] = i;
-        }
-        for (auto& t : tokens)
-        {
-            switch (t.type)
-            {
-                case INST:
-                {
-                    if (inst->opcode == NOP)
-                    {            
-                        inst->opcode = static_cast<OpCode>(t.data);
-                        break;
-                    }   
-                    m_CompiledCode.push_back(*inst); 
-					delete inst;
-					inst = new Instruction();            
-                    inst->opcode = static_cast<OpCode>(t.data);
-                    break;
-                }
-                case NUM:
-                {
-                    inst->p3 = t.data;
-                    break;
-                }
-                case REG:
-                {
-                    if (inst->reg1 == NUL) inst->reg1 = static_cast<Regs>(t.data);
-                    else inst->reg2 = static_cast<Regs>(t.data);
-                    break;
-                }
-                case LABEL_CALL:
-                {
-                    inst->p3 = labelAddresses[t.text];
-                    break;
-                }
-            }
-        }
-        m_CompiledCode.push_back(*inst); 
-		delete inst;
-
-        // for (auto& e : m_CompiledCode)
-        // {
-            // cout << "INST: " << opcodeType[e.opcode] << " reg1: " << regType[e.reg1] << " reg2: " << regType[e.reg2] << " p3: " << e.p3 << NL;
-        // }
-        return m_CompiledCode;
-    }
-}
-*/
 
 DISABLE_ENUM_WARNING_END

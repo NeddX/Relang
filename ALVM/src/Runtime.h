@@ -33,7 +33,7 @@ namespace rlang::alvm {
 			&ALVM::Decrement,
 			&ALVM::PrintInt,
 			&ALVM::PrintStr,
-            &ALVM::Cmp,
+            &ALVM::Compare,
 			&ALVM::Move,
 			&ALVM::Jump,
 			&ALVM::ConditionalJump,
@@ -46,14 +46,24 @@ namespace rlang::alvm {
 			&ALVM::Srzf,
 			&ALVM::Store,
 			&ALVM::Load,
+			&ALVM::System,
+			&ALVM::Syscall,
+			&ALVM::InvokeC,
 			&ALVM::JmpIfZero,
 			&ALVM::JmpIfNotZero,
-			&ALVM::JmpIfNegative,
-			&ALVM::JmpIfNotNegative,
+			&ALVM::JmpIfSign,
+			&ALVM::JmpIfNotSign,
 			&ALVM::JmpIfOverflow,
 			&ALVM::JmpIfNotOverflow,
 			&ALVM::JmpIfCarry,
 			&ALVM::JmpIfNotCarry,
+
+			&ALVM::JmpIfNotCarry,//&ALVM::JmpIfUnsignedGreaterThan,
+			&ALVM::JmpIfCarry, //&ALVM::JmpIFUnsignedLessThan,
+			&ALVM::JmpIfZero, //&ALVM::JmpIfUnsignedEqualTo,
+
+			&ALVM::JmpIfUnsignedGreaterOrEqualTo,
+			&ALVM::JmpIfUnsignedLesserOrEqualTo,
 
 			&ALVM::JmpIfSignedLessThan,
 			&ALVM::Nop
@@ -76,7 +86,7 @@ namespace rlang::alvm {
 		void Decrement();
 		void PrintInt();
 		void PrintStr();
-        void Cmp();
+        void Compare();
 		void Move();
 		void Jump();
 		void ConditionalJump();
@@ -89,16 +99,28 @@ namespace rlang::alvm {
 		void Srzf();
 		void Store();
 		void Load();
+		void System();
+		void Syscall();
+		void InvokeC();
 		void JmpIfZero();
 		void JmpIfNotZero();
-		void JmpIfNegative();
-		void JmpIfNotNegative();
+		void JmpIfSign();
+		void JmpIfNotSign();
 		void JmpIfOverflow();
 		void JmpIfNotOverflow();
 		void JmpIfCarry();
 		void JmpIfNotCarry();
 
+		void JmpIfUnsignedGreaterOrEqualTo();
+		void JmpIfUnsignedLesserOrEqualTo();
+
 		void JmpIfSignedLessThan();
+		void BitwiseAND();
+		void BitwsieOR();
+		void BitwiseNOT();
+		void BitwiseXOR();
+		void BitwiseTEST();
+		void Debug_PrintFlags();
 		void Nop();
 	};
 }

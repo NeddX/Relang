@@ -1,0 +1,77 @@
+.section data:
+	byte		sf_str		"Sign Flag: ",			#0
+	byte		cf_str		"Carry Flag: ",			#0
+	byte		of_str		"Overflow Flag: ",		#0
+	byte		zf_str		"Zero Flag: ",			#0
+	byte		nl			"\n",					#0
+
+	byte		g_str		"Greater than",			#0
+	byte		l_str		"Lesser than",			#0
+	byte		ge_str		"Greater or Equal",		#0
+	byte		le_str		"Lesser or Equal",		#0
+	byte		e_str		"Equal To",				#0
+
+.section code:
+	call @ester
+	mov %r0, #0	
+	end
+
+@ester:
+	mov %r0, #255
+	mov %r1, #20
+	cmp %r0, %r1
+	jug .g
+	jul .l
+	je .e
+
+.g:
+	pstr g_str
+	jmp .end
+
+.ge:
+	pstr ge_str
+	jmp .end
+
+.l:
+	pstr l_str
+	jmp .end
+
+.le:
+	pstr le_str
+	jmp .end
+
+.e:
+	pstr e_str
+	jmp .end
+
+.end:	
+	pstr nl
+	ret
+
+@_main:
+	push %bp
+	mov %bp, %sp
+	
+	mov %r0, #200
+	mov %r1, #255
+	cmp %r0, %r1
+
+	pstr sf_str
+	pint %sf
+	pstr nl
+	
+	pstr cf_str
+	pint %cf
+	pstr nl
+	
+	pstr of_str
+	pint %of
+	pstr nl
+
+	pstr zf_str
+	pint %zf
+	pstr nl
+	pstr nl
+
+	pop %bp
+	ret

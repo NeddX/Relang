@@ -32,6 +32,9 @@ namespace rlang::alvm {
         Srzf,
         Store,
         Load,
+        System,
+        Syscall,
+        InvokeC,
         Jz,
         Jnz,
         Js,
@@ -41,7 +44,19 @@ namespace rlang::alvm {
         Jc,
         Jcn,
 
+        Jug,
+        Jul,
+        Je,
+        Juge,
+        Jule,
+
         Jl,
+
+        AND,
+        OR,
+        NOT,
+        XOR,
+        TEST,
 
         Nop
     };
@@ -49,7 +64,7 @@ namespace rlang::alvm {
     struct Instruction
     {
         OpCode opcode = OpCode::Nop;
-        std::uint32_t imm32 = 0;
+        std::uint64_t imm64 = 0;
         Register reg1 = { RegType::Nul, false };
         Register reg2 = { RegType::Nul, false };
         std::int8_t size = 32; 
@@ -82,6 +97,9 @@ namespace rlang::alvm {
             "srzf",
             "store",
             "load",
+            "system",
+            "syscall",
+            "invokec",
             "jz",
             "jnz",
             "js",
@@ -90,7 +108,17 @@ namespace rlang::alvm {
             "jno",
             "jc",
             "jcn",
+            "jug",
+            "jul",
+            "jue",
+            "juge",
+            "jule",
             "jl",
+            "and",
+            "or",
+            "not",
+            "xor",
+            "test",
             "nop"
         };
     };

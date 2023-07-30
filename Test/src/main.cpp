@@ -59,11 +59,11 @@ int main(int argc, const char* argv[])
         std::cout << "Dumping intermediate code...\n\n";
         for (int i = 0; const auto& inst : compiled_code)
         {
-            std::cout << i++ << "\t" << rlang::alvm::Instruction::InstructionStr[(std::size_t)inst.opcode];
+            std::cout << "0x" << i++ << ":\t" << std::hex << "0x" << (std::uint64_t)inst.opcode << "\t\t" << rlang::alvm::Instruction::InstructionStr[(std::size_t)inst.opcode];
 
             if (inst.reg1.type == rlang::alvm::RegType::Nul)
             {
-                std::cout << " #" << inst.imm32;
+                std::cout << " #0x" << inst.imm64;
             }
             else
             {
@@ -81,11 +81,15 @@ int main(int argc, const char* argv[])
                         case 32:
                             std::cout << "dword";
                             break;
+                        default:
+                        case 64:
+                            std::cout << "qword";
+                            break;
                     }
                     std::cout << " [%" << rlang::alvm::Register::RegisterStr[(std::size_t)inst.reg1.type];
                     if (inst.reg1.displacement != 0)
                     {
-                        std::cout << ((inst.reg1.displacement < 0) ? "-#" : "+#") << std::abs(inst.reg1.displacement);
+                        std::cout << ((inst.reg1.displacement < 0) ? "-#0x" : "+#0x") << std::abs(inst.reg1.displacement);
                     }
                     std::cout << "]";
                 }
@@ -110,11 +114,15 @@ int main(int argc, const char* argv[])
                                 case 32:
                                     std::cout << "dword";
                                     break;
+                                default:
+                                case 64:
+                                    std::cout << "qword";
+                                    break;
                             }
                             std::cout << " [%" << rlang::alvm::Register::RegisterStr[(std::size_t)inst.reg2.type];
                             if (inst.reg2.displacement != 0)
                             {
-                                std::cout << ((inst.reg2.displacement < 0) ? "-#" : "+#") << std::abs(inst.reg2.displacement);
+                                std::cout << ((inst.reg2.displacement < 0) ? "-#0x" : "+#0x") << std::abs(inst.reg2.displacement);
                             }
                             std::cout << "]";
                     }
@@ -130,7 +138,7 @@ int main(int argc, const char* argv[])
                         inst.opcode != rlang::alvm::OpCode::PStr &&
                         inst.opcode != rlang::alvm::OpCode::PInt &&
                         inst.opcode != rlang::alvm::OpCode::Inc &&
-                        inst.opcode != rlang::alvm::OpCode::Dec) std::cout << ", #" << inst.imm32;
+                        inst.opcode != rlang::alvm::OpCode::Dec) std::cout << ", #0x" << inst.imm64;
                 }
             }
             std::cout << "\n";

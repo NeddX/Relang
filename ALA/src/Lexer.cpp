@@ -3,7 +3,7 @@
 namespace rlang::rmc {
     void Token::Dump() const
     {
-        std::printf("token { \"%s\" type: %s data: %d [%d, %d] }\n",
+        std::printf("token { \"%s\" type: %s data: %lu [%lu, %lu] }\n",
                     text.c_str(), GET_TOKEN_STR(type).c_str(), data, line, cur);
     }
 
@@ -116,6 +116,8 @@ namespace rlang::rmc {
                 case '+':
                 case ']':
                 case '[':
+                case '(':
+                case ')':
                 case '.':
                 {
                     if (current_token.type == TokenType::Comment || current_token.type == TokenType::StringLiteral)
