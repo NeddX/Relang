@@ -32,12 +32,12 @@ namespace rlang::alvm {
 		SFR,
 
 		// Flags
-		ZF,
-		CF,
-		OF,
-		SF,
-		PF,
-		AF,
+		//ZF,
+		//CF,
+		//OF,
+		//SF,
+		//PF,
+		//AF,
 
 		// Segement pointers
 		CS,
@@ -82,12 +82,12 @@ namespace rlang::alvm {
 
 			"sfr",
 
-			"zf",
-			"cf",
-			"of",
-			"sf",
-			"pf",
-			"af",
+			//"zf",
+			//"cf",
+			//"of",
+			//"sf",
+			//"pf",
+			//"af",
 
 			"cs",
 			"ss",

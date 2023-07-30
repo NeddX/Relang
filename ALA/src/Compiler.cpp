@@ -764,7 +764,7 @@ qword_def_case:
                         std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): "
                                   << "Invalid operator '" << tokens[i].text << "' in instruction operand context."
                                   << std::endl;
-                            std::exit(-1);
+                        std::exit(-1);
                     }
                     break;
                 }

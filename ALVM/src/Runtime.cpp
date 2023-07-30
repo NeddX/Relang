@@ -2,7 +2,7 @@
 #include "Instruction.h"
 
 #define GetRegVal(reg) m_Registers[reg.type]
-#define TriggerFlags(op1, op2, res, bitsize, optype)					\
+/*#define TriggerFlags(op1, op2, res, bitsize, optype)					\
     m_Registers[RegType::ZF] = res == 0;								\
     m_Registers[RegType::CF] = (optype) ? res < op1 || res < op2 : res > op1 || res > op2; \
     m_Registers[RegType::SF] = (res >> bitsize - 1) & 1;				\
@@ -16,6 +16,43 @@
         }                                                           \
         return n;                                                   \
 	} (res & 0xff) % 2 == 0;
+
+*/
+
+#define ResetFlags()							\
+	m_Registers[RegType::SFR] = 0
+
+#define SetZF()									\
+	m_Registers[RegType::SFR] |= 0x01
+#define SetSF()									\
+	m_Registers[RegType::SFR] |= 0x02
+#define SetOF()									\
+	m_Registers[RegType::SFR] |= 0x04
+#define SetCF()									\
+	m_Registers[RegType::SFR] |= 0x08
+#define ResetZF()								\
+	m_Registers[RegType::SFR] &= ~0x01
+#define ResetSF()								\
+	m_Registers[RegType::SFR] &= ~0x02
+#define ResetOF()								\
+	m_Registers[RegType::SFR] &= ~0x04
+#define ResetCF()								\
+	m_Registers[RegType::SFR] &= ~0x8
+#define GetZF()									\
+	(m_Registers[RegType::SFR] & 0x01)
+#define GetSF()									\
+	(m_Registers[RegType::SFR] & 0x02)
+#define GetOF()									\
+	(m_Registers[RegType::SFR] & 0x04)
+#define GetCF()									\
+	(m_Registers[RegType::SFR] & 0x08)
+#define ResetSFR()								\
+	m_Registers[RegType::SFR] = 0x0
+
+#define TriggerFlags(op1, op2, res, bitsize, optype)	\
+	if (res == 0) SetZF(); else ResetZF();									\
+	if ((res >> bitsize - 1) & 1) SetSF(); else ResetSF();	\
+	if ((optype) ? res < op1 || res < op2 : res > op1 || res > op2) SetCF(); else ResetCF()
 
 #define Push8(u8)								\
 	m_Sp--;										\
@@ -597,13 +634,13 @@ namespace rlang::alvm {
 
 	void ALVM::ConditionalJump()
 	{
-		if (m_Registers[RegType::CF]) Jump();
+		if (GetCF()) Jump();
 		else m_Pc++;
 	}
 
 	void ALVM::ConditionalNotJump()
 	{
-		if (!m_Registers[RegType::CF]) Jump();
+		if (!GetCF()) Jump();
 		else m_Pc++;
 	}
 
@@ -750,56 +787,56 @@ namespace rlang::alvm {
 
 	void ALVM::JmpIfZero()
 	{
-		if (m_Registers[RegType::ZF])
+		if (GetZF())
 			Jump();
 		else m_Pc++;
 	}
 
 	void ALVM::JmpIfNotZero()
 	{
-		if (!m_Registers[RegType::ZF])
+		if (!GetZF())
 			Jump();
 		else m_Pc++;
 	}
 
 	void ALVM::JmpIfSign()
 	{
-		if (m_Registers[RegType::SF])
+		if (GetSF())
 			Jump();
 		else m_Pc++;
 	}
 
 	void ALVM::JmpIfNotSign()
 	{
-		if (!m_Registers[RegType::SF])
+		if (!GetSF())
 			Jump();
 		else m_Pc++;
 	}
 
 	void ALVM::JmpIfOverflow()
 	{
-		if (m_Registers[RegType::OF])
+		if (GetOF())
 			Jump();
 		else m_Pc++;
 	}
 
 	void ALVM::JmpIfNotOverflow()
 	{
-		if (!m_Registers[RegType::OF])
+		if (!GetOF())
 			Jump();
 		else m_Pc++;
 	}
 
 	void ALVM::JmpIfCarry()
 	{
-		if (m_Registers[RegType::CF])
+		if (GetCF())
 			Jump();
 		else m_Pc++;
 	}
 
 	void ALVM::JmpIfNotCarry()
 	{
-		if (!m_Registers[RegType::CF])
+		if (!GetCF())
 			Jump();
 		else m_Pc++;
 	}
@@ -808,21 +845,21 @@ namespace rlang::alvm {
 
 	void ALVM::JmpIfUnsignedGreaterOrEqualTo()
 	{
-		if (!m_Registers[RegType::CF] || m_Registers[RegType::ZF])
+		if (!GetCF() || GetZF())
 			Jump();
 		else m_Pc++;
 	}
 
 	void ALVM::JmpIfUnsignedLesserOrEqualTo()
 	{
-		if (m_Registers[RegType::CF] || m_Registers[RegType::ZF])
+		if (GetCF() || GetZF())
 			Jump();
 		else m_Pc++;
 	}
 
 	void ALVM::JmpIfSignedLessThan()
 	{
-		if (m_Registers[RegType::SF] != m_Registers[RegType::OF])
+		if (GetSF() != GetOF())
 			Jump();
 		else m_Pc++;
 	}
