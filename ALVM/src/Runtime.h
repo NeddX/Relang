@@ -8,7 +8,7 @@
 #include "Instruction.h"
 
 namespace rlang::alvm {
-	constexpr int STACK_SIZE = 30;//1024 * 1024 * 2;
+	constexpr int STACK_SIZE = 1024 * 1024 * 2;
 
 	class ALVM
 	{
@@ -35,11 +35,10 @@ namespace rlang::alvm {
 			&ALVM::PrintStr,
             &ALVM::Compare,
 			&ALVM::Move,
-			&ALVM::Jump,
-			&ALVM::ConditionalJump,
-			&ALVM::ConditionalNotJump,
+			&ALVM::Enter,
 			&ALVM::Call,
 			&ALVM::Return,
+			&ALVM::Leave,
 			&ALVM::Malloc,
 			&ALVM::Free,
 			&ALVM::Lrzf,
@@ -49,6 +48,7 @@ namespace rlang::alvm {
 			&ALVM::System,
 			&ALVM::Syscall,
 			&ALVM::InvokeC,
+			&ALVM::Jump,
 			&ALVM::JmpIfZero,
 			&ALVM::JmpIfNotZero,
 			&ALVM::JmpIfSign,
@@ -66,6 +66,14 @@ namespace rlang::alvm {
 			&ALVM::JmpIfUnsignedLesserOrEqualTo,
 
 			&ALVM::JmpIfSignedLessThan,
+
+			&ALVM::BitwiseAND,
+			&ALVM::BitwsieOR,
+			&ALVM::BitwiseNOT,
+			&ALVM::BitwiseXOR,
+			&ALVM::BitwiseTEST,
+
+			&ALVM::Debug_DumpFlags,
 			&ALVM::Nop
 	};
 	public:
@@ -88,11 +96,10 @@ namespace rlang::alvm {
 		void PrintStr();
         void Compare();
 		void Move();
-		void Jump();
-		void ConditionalJump();
-		void ConditionalNotJump();
+		void Enter();
 		void Call();
 		void Return();
+		void Leave();
 		void Malloc();
 		void Free();
 		void Lrzf();
@@ -102,6 +109,7 @@ namespace rlang::alvm {
 		void System();
 		void Syscall();
 		void InvokeC();
+		void Jump();
 		void JmpIfZero();
 		void JmpIfNotZero();
 		void JmpIfSign();
@@ -120,7 +128,7 @@ namespace rlang::alvm {
 		void BitwiseNOT();
 		void BitwiseXOR();
 		void BitwiseTEST();
-		void Debug_PrintFlags();
+		void Debug_DumpFlags();
 		void Nop();
 	};
 }

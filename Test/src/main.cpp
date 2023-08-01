@@ -26,10 +26,6 @@ void TestAndExpect(void (*function)(), const std::string& expect)
 
 int main(int argc, const char* argv[])
 {
-    //std::cout << "Testing ALVM...\n";
-    //TestAndExpect(&testman::alvm::SimplePrint, "it be workin!");
-
-    //std::cout << "\nTesting ALA...\n";
     std::ifstream fs;
     fs.open("./basic.amc");
 
@@ -49,9 +45,15 @@ int main(int argc, const char* argv[])
     using Code = rlang::alvm::OpCode;
     using Reg = rlang::alvm::RegType;
 
-    rlang::rmc::TokenList tk_list = rlang::rmc::Lexer::Start(src);
+    auto tk_list = rlang::rmc::Lexer::Start(src);
     auto compiler_result = rlang::rmc::Compiler::Compile(tk_list);
-    std::vector<rlang::alvm::Instruction> compiled_code = compiler_result.first;
+    auto& compiled_code = compiler_result.compiledCode;
+
+    if (compiler_result.status == rlang::rmc::CompilerStatus::Error)
+    {
+        std::cerr << "\nCompilation failed.\n";
+        std::exit(-1);
+    }
 
     std::cout << "Compilation finished.\n";
     if (argc > 1 && std::strcmp(argv[1], "--dump-intermediate") == 0)
@@ -70,7 +72,7 @@ int main(int argc, const char* argv[])
                 if (inst.reg1.ptr)
                 {
                     std::cout << " ";
-                    switch (inst.reg1.size)
+                    switch (inst.size)
                     {
                         case 8:
                             std::cout << "byte";
@@ -103,7 +105,7 @@ int main(int argc, const char* argv[])
                     if (inst.reg2.ptr)
                     {
                             std::cout << ", ";
-                            switch (inst.reg1.size)
+                            switch (inst.size)
                             {
                                 case 8:
                                     std::cout << "byte";
@@ -146,7 +148,7 @@ int main(int argc, const char* argv[])
     }
 
     std::cout << std::endl;
-    rlang::alvm::ALVM r(compiler_result.second);
+    rlang::alvm::ALVM r(compiler_result.dataSection);
     std::int32_t result = 0;
     r.Run(compiled_code, result); // mr synctactical shugar
     std::cout << "Exited with code: " << result << std::endl;

@@ -3,6 +3,9 @@
 clear
 echo "Build started."
 
+export CC=$(which clang)
+export CXX=$(which clang++)
+
 if [ ! -d "builds" ]; then
     echo "Configuring CMake..."
 	mkdir -p "builds"

@@ -51,8 +51,9 @@
 
 #define TriggerFlags(op1, op2, res, bitsize, optype)	\
 	if (res == 0) SetZF(); else ResetZF();									\
-	if ((res >> bitsize - 1) & 1) SetSF(); else ResetSF();	\
-	if ((optype) ? res < op1 || res < op2 : res > op1 || res > op2) SetCF(); else ResetCF()
+	if ((res >> sizeof(bitsize) - 1) & 1) SetSF(); else ResetSF();	\
+	if ((optype) ? res < op1 || res < op2 : res > op1 || res > op2) SetCF(); else ResetCF(); \
+	if ((optype) ? (bitsize)res < (bitsize)op1 || (bitsize)res < (bitsize)op2 : (bitsize)res > (bitsize)op1 || (bitsize)res > (bitsize)op2) SetCF(); else ResetCF() \
 
 #define Push8(u8)								\
 	m_Sp--;										\
@@ -61,7 +62,7 @@
 	m_Sp -= 2;									\
 	*(std::uint16_t*)m_Sp = (std::uint16_t)u16
 #define Push32(u32)								\
-	m_Sp -= 4;									\
+ 	m_Sp -= 4;									\
 	*(std::uint32_t*)m_Sp = (std::uint32_t)u32
 #define Push64(u64)	\
 	m_Sp -= 8; 	\
@@ -309,7 +310,7 @@ namespace rlang::alvm {
 			m_Registers[RegType::R0] = res;
 		}
 
-		TriggerFlags(op1, op2, res, 32, 1);
+		TriggerFlags(op1, op2, res, std::int32_t, 1);
 		m_Pc++;
 	}
 
@@ -372,7 +373,7 @@ namespace rlang::alvm {
 			m_Registers[RegType::R0] = res;
 		}
 
-		TriggerFlags(op1, op2, res, 32, 0);
+		TriggerFlags(op1, op2, res, std::int32_t, 0);
 		m_Pc++;
 	}
 
@@ -422,21 +423,21 @@ namespace rlang::alvm {
 				case 8:
 				{
 					std::uint8_t op1 = ReadFrom(GetRegVal(m_Pc->reg1)), res = ++op1;
-					TriggerFlags(op1, 1, res, 8, 1);
+					TriggerFlags(op1, 1, res, std::int8_t, 1);
 					WriteAt(GetRegVal(m_Pc->reg1), res);
 					break;
 				}
 				case 16:
 				{
 					std::uint16_t op1 = ReadFrom16(GetRegVal(m_Pc->reg1)), res = ++op1;
-					TriggerFlags(op1, 1, res, 16, 1);
+					TriggerFlags(op1, 1, res, std::int16_t, 1);
 					WriteAt16(GetRegVal(m_Pc->reg1), res);
 					break;
 				}
 				case 32:
 				{
 					std::uint32_t op1 = ReadFrom32(GetRegVal(m_Pc->reg1)), res = ++op1;
-					TriggerFlags(op1, 1, res, 32, 1);
+					TriggerFlags(op1, 1, res, std::int32_t, 1);
 					WriteAt32(GetRegVal(m_Pc->reg1), res);
 					break;
 				}
@@ -444,7 +445,7 @@ namespace rlang::alvm {
 				case 64:
 				{
 					std::uint64_t op1 = ReadFrom64(GetRegVal(m_Pc->reg1)), res = ++op1;
-					TriggerFlags(op1, 1, res, 64, 1);
+					TriggerFlags(op1, 1, res, std::int64_t, 1);
 					WriteAt64(GetRegVal(m_Pc->reg1), res);
 				}
 			}
@@ -453,7 +454,7 @@ namespace rlang::alvm {
 		{
 			// r
 			std::uint64_t op1 = GetRegVal(m_Pc->reg1), res = ++op1;
-			TriggerFlags(op1, 1, res, 64, 1);
+			TriggerFlags(op1, 1, res, std::int64_t, 1);
 			GetRegVal(m_Pc->reg1) = res;
 		}
 		m_Pc++;
@@ -469,26 +470,26 @@ namespace rlang::alvm {
 				case 8:
 				{
 					std::uint8_t op1 = ReadFrom(GetRegVal(m_Pc->reg1)), res = --op1;
-					TriggerFlags(op1, 1, res, 8, 0);
+					TriggerFlags(op1, 1, res, std::int8_t, 0);
 					break;
 				}
 				case 16:
 				{
 					std::uint16_t op1 = ReadFrom16(GetRegVal(m_Pc->reg1)), res = --op1;
-					TriggerFlags(op1, 1, res, 16, 0);
+					TriggerFlags(op1, 1, res, std::int16_t, 0);
 					break;
 				}
 				case 32:
 				{
 					std::uint32_t op1 = ReadFrom32(GetRegVal(m_Pc->reg1)), res = --op1;
-					TriggerFlags(op1, 1, res, 32, 0);
+					TriggerFlags(op1, 1, res, std::int32_t, 0);
 					break;
 				}
 				default:
 				case 64:
 				{
 					std::uint64_t op1 = ReadFrom64(GetRegVal(m_Pc->reg1)), res = --op1;
-					TriggerFlags(op1, 1, res, 64, 0);
+					TriggerFlags(op1, 1, res, std::int64_t, 0);
 					break;
 				}
 			}
@@ -497,7 +498,7 @@ namespace rlang::alvm {
 		{
 			// r
 			std::uint64_t op1 = GetRegVal(m_Pc->reg1), res = --op1;
-			TriggerFlags(op1, 1, res, 64, 0);
+			TriggerFlags(op1, 1, res, std::int64_t, 0);
 		}
 		m_Pc++;
 	}
@@ -607,7 +608,7 @@ namespace rlang::alvm {
 			res = op1 - op2;
 		}
 
-		TriggerFlags(op1, op2, res, 64, 0);
+		TriggerFlags(op1, op2, res, std::int64_t, 0);
         m_Pc++;
     }
 
@@ -632,16 +633,12 @@ namespace rlang::alvm {
 		else m_Pc = m_Bytecode + m_Pc->imm64;
 	}
 
-	void ALVM::ConditionalJump()
+	void ALVM::Enter()
 	{
-		if (GetCF()) Jump();
-		else m_Pc++;
-	}
-
-	void ALVM::ConditionalNotJump()
-	{
-		if (!GetCF()) Jump();
-		else m_Pc++;
+		Push64(m_Registers[RegType::BP]);
+		m_Registers[RegType::BP] = m_Registers[RegType::SP];
+		m_Registers[RegType::SP] -= m_Pc->imm64;
+		m_Pc++;
 	}
 
 	void ALVM::Call()
@@ -654,6 +651,13 @@ namespace rlang::alvm {
 	{
 		Pop64(std::uintptr_t addr);
 		m_Pc = (Instruction*)addr;
+	}
+
+	void ALVM::Leave()
+	{
+		m_Registers[RegType::SP] = m_Registers[RegType::BP];
+		Pop64(m_Registers[RegType::BP]);
+		m_Pc++;
 	}
 
 	void ALVM::Malloc()
@@ -692,7 +696,7 @@ namespace rlang::alvm {
 
 	void ALVM::Store()
 	{
-		// r, imm32 | reg
+		// m, imm32 | reg
 		if (m_Pc->reg2.type != RegType::Nul)
 		{
 			switch (m_Pc->size)
@@ -736,21 +740,21 @@ namespace rlang::alvm {
 
 	void ALVM::Load()
 	{
-		// r, r
+		// r, m
 		switch (m_Pc->size)
 		{
 			case 8:
-				m_Registers[GetRegVal(m_Pc->reg2)] = ReadFrom(GetRegVal(m_Pc->reg1) + m_Pc->reg1.displacement);
+				m_Registers[GetRegVal(m_Pc->reg1)] = ReadFrom(GetRegVal(m_Pc->reg2) + m_Pc->reg2.displacement);
 				break;
 			case 16:
-				m_Registers[GetRegVal(m_Pc->reg2)] = ReadFrom16(GetRegVal(m_Pc->reg1) + m_Pc->reg1.displacement);
+				m_Registers[GetRegVal(m_Pc->reg1)] = ReadFrom16(GetRegVal(m_Pc->reg2) + m_Pc->reg2.displacement);
 				break;
 			case 32:
-				m_Registers[GetRegVal(m_Pc->reg2)] = ReadFrom32(GetRegVal(m_Pc->reg1) + m_Pc->reg1.displacement);
+				m_Registers[GetRegVal(m_Pc->reg1)] = ReadFrom32(GetRegVal(m_Pc->reg2) + m_Pc->reg2.displacement);
 				break;
 			default:
 			case 64:
-				m_Registers[GetRegVal(m_Pc->reg2)] = ReadFrom64(GetRegVal(m_Pc->reg1) + m_Pc->reg1.displacement);
+				m_Registers[GetRegVal(m_Pc->reg1)] = ReadFrom64(GetRegVal(m_Pc->reg2) + m_Pc->reg2.displacement);
 		}
 		m_Pc++;
 	}
@@ -866,26 +870,87 @@ namespace rlang::alvm {
 
 	void ALVM::BitwiseAND()
 	{
+		if (m_Pc->reg2.type != RegType::Nul)
+		{
+			GetRegVal(m_Pc->reg1) &= GetRegVal(m_Pc->reg2);
+		}
+		else
+		{
+			GetRegVal(m_Pc->reg1) &= m_Pc->imm64;
+		}
+		ResetOF();
+		ResetCF();
+		if (GetRegVal(m_Pc->reg1) == 0) SetZF(); else ResetZF();
+		if ((GetRegVal(m_Pc->reg1) >> 64 - 1) & 1) SetSF(); else ResetSF();
+
 		m_Pc++;
 	}
 
 	void ALVM::BitwsieOR()
 	{
+		if (m_Pc->reg2.type != RegType::Nul)
+		{
+			GetRegVal(m_Pc->reg1) |= GetRegVal(m_Pc->reg2);
+		}
+		else
+		{
+			GetRegVal(m_Pc->reg1) |= m_Pc->imm64;
+		}
+		ResetOF();
+		ResetCF();
+		if (GetRegVal(m_Pc->reg1) == 0) SetZF(); else ResetZF();
+		if ((GetRegVal(m_Pc->reg1) >> 64 - 1) & 1) SetSF(); else ResetSF();
+
 		m_Pc++;
 	}
 
 	void ALVM::BitwiseNOT()
 	{
+		GetRegVal(m_Pc->reg1) = ~GetRegVal(m_Pc->reg1);
 		m_Pc++;
 	}
 
 	void ALVM::BitwiseXOR()
 	{
+		if (m_Pc->reg2.type != RegType::Nul)
+		{
+			GetRegVal(m_Pc->reg1) ^= GetRegVal(m_Pc->reg2);
+		}
+		else
+		{
+			GetRegVal(m_Pc->reg1) ^= m_Pc->imm64;
+		}
+		ResetOF();
+		ResetCF();
+		if (GetRegVal(m_Pc->reg1) == 0) SetZF(); else ResetZF();
+		if ((GetRegVal(m_Pc->reg1) >> 64 - 1) & 1) SetSF(); else ResetSF();
 		m_Pc++;
 	}
 
 	void ALVM::BitwiseTEST()
 	{
+		if (m_Pc->reg2.type != RegType::Nul)
+		{
+			GetRegVal(m_Pc->reg1) &= GetRegVal(m_Pc->reg2);
+		}
+		else
+		{
+			GetRegVal(m_Pc->reg1) &= m_Pc->imm64;
+		}
+		ResetOF();
+		ResetCF();
+		if (GetRegVal(m_Pc->reg1) == 0) SetZF(); else ResetZF();
+		if ((GetRegVal(m_Pc->reg1) >> 64 - 1) & 1) SetSF(); else ResetSF();
+		m_Pc++;
+	}
+
+	void ALVM::Debug_DumpFlags()
+	{
+		std::cout << "---------- ART_DBG ----------\n";
+		std::cout << "Zero Flag: " << GetZF() << std::endl;
+		std::cout << "Carry Flag: " << GetCF() << std::endl;
+		std::cout << "Sign Flag: " << GetSF() << std::endl;
+		std::cout << "Overflow Flag: " << GetOF() << std::endl;
 		m_Pc++;
 	}
 } // namespace rlang::alvm

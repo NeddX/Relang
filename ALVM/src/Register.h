@@ -4,7 +4,7 @@
 #include <sdafx.h>
 
 namespace rlang::alvm {
-	enum class RegType
+	enum class RegType : std::uint8_t
 	{
 		// General purpose
 		R0,
@@ -54,7 +54,6 @@ namespace rlang::alvm {
 	{
 		RegType type = RegType::Nul;
 		bool ptr = false;
-		std::int8_t size = 32;
 		std::int64_t displacement = 0;
 
 	public:

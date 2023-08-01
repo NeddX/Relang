@@ -16,7 +16,7 @@ DISABLE_ENUM_WARNING_BEGIN
 #define COMPILE_ERROR(token, msg)                                       \
     std::cerr << "Compile Error @ line (" << token.line << ", " << token.cur << "): " \
     << msg << "\n";                                                     \
-    std::exit(-1);
+    return { .status = CompilerStatus::Error }
 
 static constexpr inline std::uint8_t SizeOfDataTypeB(rlang::rmc::DataType type)
 {
@@ -124,7 +124,7 @@ namespace rlang::rmc {
                                 std::cerr << "Preproccess Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): "
                                           << "Unconsistent local label redefinition of '" << tokens[i + 1].text << "'."
                                           << std::endl;
-                                std::exit(-1);
+                                std::exit(-2);
                             }
                             m_LabelAddressMap[last_label_definition].second[tokens[i + 1].text] = inst_count + 1;
                             i += 2;
@@ -135,15 +135,16 @@ namespace rlang::rmc {
         }
     }
 
-    std::pair<std::vector<alvm::Instruction>, std::vector<std::uint8_t>> Compiler::Compile(const TokenList& tokens)
+    CompilerResult Compiler::Compile(const TokenList& tokens)
     {
         Cleanup();
         Preproccess(tokens);
 
         std::string current_label;
-        std::int8_t operand_count = 0;
-        std::int8_t bit_size = 32;
+        int operand_count = -1;
+        //int bit_size = 64;
         bool ptr = false;
+        std::size_t inst_token_id = 0;
         alvm::Instruction current_instruction;
         for (auto i = 0; i < tokens.size(); ++i)
         {
@@ -156,7 +157,7 @@ namespace rlang::rmc {
                         if (m_CurrentSection == "data")
                         {
                             std::string inst = utils::string::ToLowerCopy(tokens[i].text);
-                            std::size_t inst_token_id = i;
+                            inst_token_id = i;
                             if (inst == "byte" || inst == "word" || inst == "dword" || inst == "qword")
                             {
                                 if (tokens[i + 1].type == TokenType::Identifier)
@@ -506,9 +507,7 @@ qword_def_case:
                                 }
                                 else
                                 {
-                                    std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): "
-                                              << "Expected an Identifier after '" << tokens[i].text << "'.\n";
-                                    std::exit(-1);
+                                    COMPILE_ERROR(tokens[i], "Expected an Identifier after '" << tokens[i].text << "'.");
                                 }
                             }
                             else if (inst == "align")
@@ -519,9 +518,7 @@ qword_def_case:
                                 }
                                 else
                                 {
-                                    std::cerr << "Compile Error @ line (" << tokens[i + 2].line << ", " << tokens[i + 2].cur << "): "
-                                              << "Expected a number literal after '" << tokens[i + 1].text << "'\n";
-                                    std::exit(-1);
+                                    COMPILE_ERROR(tokens[i + 2], "Expected a number literal after '" << tokens[i + 1].text << "'.");
                                 }
                             }
                             else if (inst == "const")
@@ -540,16 +537,12 @@ qword_def_case:
                                     }
                                     else
                                     {
-                                        std::cerr << "Compile Error @ line (" << tokens[i + 2].line << ", " << tokens[i + 2].cur << "): "
-                                                  << "Expected an Integer after '" << tokens[i + 1].text << "'\n";
-                                        std::exit(-1);
+                                        COMPILE_ERROR(tokens[i + 2], "Expected an Integer after '" << tokens[i + 1].text << "'.");
                                     }
                                 }
                                 else
                                 {
-                                    std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): "
-                                              << "Expected an Identifier after const.\n";
-                                    std::exit(-1);
+                                   COMPILE_ERROR(tokens[i], "Expected an Identifier after const declaration.");
                                 }
                                 i += 2;
                             }
@@ -558,23 +551,83 @@ qword_def_case:
                     }
                     else if (m_CurrentSection != "code")
                     {
-                        std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): No section defined.\n";
-                        std::exit(-1);
+                        COMPILE_ERROR(tokens[i], "No section defined.");
                     }
 
                     if (i > 0)
                     {
                         if (current_instruction.opcode != alvm::OpCode::Nop)
+                        {
+                            switch (current_instruction.opcode)
+                            {
+                                // Instructions that accept no operands.
+                                case alvm::OpCode::Leave:
+                                case alvm::OpCode::Return:
+                                case alvm::OpCode::End:
+                                case alvm::OpCode::Lrzf:
+                                case alvm::OpCode::Srzf:
+                                case alvm::OpCode::Nop:
+                                case alvm::OpCode::DumpFlags:
+                                    if (operand_count > -1)
+                                    {
+                                        COMPILE_ERROR(tokens[inst_token_id], "Instruction doesn't accept any operands.");
+                                    }
+                                    break;
+                                // Instructions that accept a single operand.
+                                case alvm::OpCode::Call:
+                                case alvm::OpCode::Jump:
+                                case alvm::OpCode::Jc:
+                                case alvm::OpCode::Jcn:
+                                case alvm::OpCode::Je:
+                                case alvm::OpCode::Jl:
+                                case alvm::OpCode::Jno:
+                                case alvm::OpCode::Jns:
+                                case alvm::OpCode::Jnz:
+                                case alvm::OpCode::Jo:
+                                case alvm::OpCode::Js:
+                                case alvm::OpCode::Jug:
+                                case alvm::OpCode::Juge:
+                                case alvm::OpCode::Jul:
+                                case alvm::OpCode::Jule:
+                                case alvm::OpCode::Enter:
+                                case alvm::OpCode::PInt:
+                                case alvm::OpCode::PStr:
+                                case alvm::OpCode::Push:
+                                case alvm::OpCode::Pop:
+                                case alvm::OpCode::Mul:
+                                case alvm::OpCode::Div:
+                                case alvm::OpCode::System:
+                                    if (operand_count > 0)
+                                    {
+                                        COMPILE_ERROR(tokens[inst_token_id], "Instruction is unary.");
+                                    }
+                                    else if (operand_count == -1)
+                                    {
+                                        COMPILE_ERROR(tokens[inst_token_id], "Instruction accepts a single operand but no operands were passed. Refer to its encoding for correct usage.");
+                                    }
+                                    break;
+                                // Instructions that acceot three operands.
+                                // None...
+                                // Instructions that accept two operands.
+                                default:
+                                    if (operand_count <= 0 || operand_count > 1)
+                                    {
+                                        COMPILE_ERROR(tokens[inst_token_id], "Invalid number of operands passed to Instruction, refer to its encoding for correct usage.");
+                                    }
+                                    break;
+                            }
                             m_CompiledCode.push_back(current_instruction);
+                        }
                         if (!m_InstEpilogue.empty())
                         {
                             m_CompiledCode.insert(m_CompiledCode.end(), m_InstEpilogue.begin(), m_InstEpilogue.end());
                             m_InstEpilogue.clear();
                         }
                     }
+                    inst_token_id = i;
                     current_instruction = alvm::Instruction();
-                    operand_count = 0;
-                    bit_size = 32;
+                    operand_count = -1;
+                    //bit_size = current_instruction.size;
 
                     current_instruction.opcode = GetInst(tokens[i].text);
                     break;
@@ -587,16 +640,16 @@ qword_def_case:
                         if (reg != alvm::RegType::Nul)
                         {
                             if (current_instruction.reg1.type == alvm::RegType::Nul)
-                                current_instruction.reg1 = alvm::Register{ .type = reg, .ptr = ptr, .size = bit_size };
+                                current_instruction.reg1 = alvm::Register{ .type = reg, .ptr = ptr };
                             else
-                                current_instruction.reg2 = alvm::Register{ .type = reg, .ptr = ptr, .size = bit_size };
+                                current_instruction.reg2 = alvm::Register{ .type = reg, .ptr = ptr };
                             i++;
                         }
                         else
                         {
-                            std::cerr << "Compile Error: '" << tokens[i + 1].text << "' undefined identifier.\n";
-                            std::exit(-1);
+                            COMPILE_ERROR(tokens[i + 1], "Undefined Identifier '" << tokens[i + 1].text << "'.");
                         }
+                        if (operand_count <= -1) operand_count++;
                     }
                     else if (tokens[i].text == "[")
                     {
@@ -609,16 +662,13 @@ qword_def_case:
                     else if (tokens[i].text == ",")
                     {
                         operand_count++;
-                        bit_size = 32;
                         ptr = false;
                     }
                     else if (tokens[i].text == "+")
                     {
                         if (tokens[i + 1].type != TokenType::Number)
                         {
-                            std::cout << "Compiler Error @ line (" << tokens[i + 1].line << ", " << tokens[i + 1].cur << "): "
-                                      << "Expected a number literal after " << tokens[i].text << ".\n";
-                            std::exit(-1);
+                            COMPILE_ERROR(tokens[i + 1], "Expected a number literal after " << tokens[i].text << ".");
                         }
                         else if (ptr)
                         {
@@ -634,18 +684,14 @@ qword_def_case:
                         }
                         else
                         {
-                            std::cout << "Compiler Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): "
-                                      << "Single operation arithmetic expressions are only allowed inside Memory Access Brackets.\n";
-                            std::exit(-1);
+                            COMPILE_ERROR(tokens[i], "Single operation arithmetic expressions are only allowed inside Memory Access Brackets.");
                         }
                     }
                     else if (tokens[i].text == "-")
                     {
                         if (tokens[i + 1].type != TokenType::Number)
                         {
-                            std::cout << "Compiler Error @ line (" << tokens[i + 1].line << ", " << tokens[i + 1].cur << "): "
-                                      << "Expected a number literal after " << tokens[i].text << ".\n";
-                            std::exit(-1);
+                            COMPILE_ERROR(tokens[i + 1], "Expected a number literal after " << tokens[i].text << ".");
                         }
                         else if (ptr)
                         {
@@ -661,20 +707,12 @@ qword_def_case:
                         }
                         else
                         {
-                            std::cout << "Compiler Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): "
-                                      << "Single operation arithmetic expressions are only allowed inside Memory Access Brackets.\n";
-                            std::exit(-1);
+                            COMPILE_ERROR(tokens[i], "Single operqation arithmetic expressionsa re only allowed inside Memory Access Brackets.");
                         }
                     }
                     else if (tokens[i].text == "*")
                     {
-                        std::cerr << "Multiplication is not supported.\n";
-                        std::exit(-1);
-                    }
-                    else if (tokens[i].text == "/")
-                    {
-                        std::cerr << "Divison is not supported.\n";
-                        std::exit(-1);
+                        COMPILE_ERROR(tokens[i], "Scaling not yet supported.");
                     }
                     else if (tokens[i].text == "@")
                     {
@@ -682,8 +720,32 @@ qword_def_case:
                         if (tokens[i + 1].type == TokenType::Identifier &&
                             tokens[i + 2].text != ":")
                         {
+                            if (operand_count <= -1) operand_count++;
+
                             if (m_LabelAddressMap.find(tokens[i + 1].text) != m_LabelAddressMap.end())
                             {
+                                switch (current_instruction.opcode)
+                                {
+                                    case alvm::OpCode::Call:
+                                    case alvm::OpCode::Jump:
+                                    case alvm::OpCode::Jc:
+                                    case alvm::OpCode::Jcn:
+                                    case alvm::OpCode::Je:
+                                    case alvm::OpCode::Jl:
+                                    case alvm::OpCode::Jno:
+                                    case alvm::OpCode::Jns:
+                                    case alvm::OpCode::Jnz:
+                                    case alvm::OpCode::Jo:
+                                    case alvm::OpCode::Js:
+                                    case alvm::OpCode::Jug:
+                                    case alvm::OpCode::Juge:
+                                    case alvm::OpCode::Jul:
+                                    case alvm::OpCode::Jule:
+                                        break;
+                                    default:
+                                        COMPILE_ERROR(tokens[i], "Instruction doesn't accept a label as an operand.");
+                                        break;
+                                }
                                 current_instruction.imm64 = (std::uint64_t)m_LabelAddressMap[tokens[i + 1].text].first;
                             }
                             else
@@ -694,12 +756,12 @@ qword_def_case:
                             }
                             i++;
                         }
-                        else
+                        else if (tokens[i + 2].type == TokenType::Operator && tokens[i + 2].text == ":")
                         {
+                            // It's a label definition, ignore it.
                             current_label = tokens[i + 1].text;
                             i += 2;
                         }
-
                     }
                     else if (tokens[i].text == ".")
                     {
@@ -732,6 +794,7 @@ qword_def_case:
                                      m_LabelAddressMap[current_label].second.find(tokens[i + 1].text) !=
                                      m_LabelAddressMap[current_label].second.end())
                                 {
+                                    operand_count++;
                                     current_instruction.imm64 = (std::uint64_t)m_LabelAddressMap[current_label].second[tokens[i + 1].text];
                                     i++;
                                     break;
@@ -740,22 +803,23 @@ qword_def_case:
                                 {
                                     if (!current_label.empty())
                                     {
-                                        std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): Local label '"
-                                                  << tokens[i + 1].text << "' in parent label '" << current_label << "' is undefined.\n";
+                                        COMPILE_ERROR(tokens[i], "Local label " << tokens[i + 1].text << " in parent label " << current_label << " is undefined.");
                                     }
                                     else
                                     {
-                                        std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): "
-                                                  << "Attempted to reference a local label in an unexistent parent label.\n";
+                                        COMPILE_ERROR(tokens[i], "Attempted to reference a local label in an unexistent parent label.");
                                     }
-                                    std::exit(-1);
                                 }
+                            }
+                            else if (tokens[i + 2].type == TokenType::Operator || tokens[i + 2].text == ":")
+                            {
+                                i += 2;
+                                // It's a local label definition, ignore it.
+                                break;
                             }
                             else
                             {
-                                // It's a local label definition, ignore it.
-                                i += 2;
-                                break;
+                                COMPILE_ERROR(tokens[i], "Whatever you're trying to do bud.");
                             }
                         }
                     }
@@ -770,27 +834,63 @@ qword_def_case:
                 }
                 case TokenType::Number:
                 {
+                    if (operand_count <= -1) operand_count++;
+
+                    switch (current_instruction.opcode)
+                    {
+                        case alvm::OpCode::Load:
+                            if (operand_count > 0)
+                            {
+                                COMPILE_ERROR(tokens[inst_token_id], "Instruction doesn't take number literal as its second operand."
+                                              << "\nRefer to its encoding for correct usage.");
+                            }
+                        case alvm::OpCode::Store:
+                        case alvm::OpCode::Mov:
+                        case alvm::OpCode::System:
+                        case alvm::OpCode::Syscall:
+                        case alvm::OpCode::Dec:
+                        case alvm::OpCode::Inc:
+                        case alvm::OpCode::Mul:
+                        case alvm::OpCode::Div:
+                        case alvm::OpCode::Add:
+                        case alvm::OpCode::Sub:
+                        case alvm::OpCode::PStr:
+                        case alvm::OpCode::Cmp:
+                        case alvm::OpCode::AND:
+                        case alvm::OpCode::OR:
+                        case alvm::OpCode::NOT:
+                        case alvm::OpCode::XOR:
+                            if (operand_count == 0)
+                            {
+                                COMPILE_ERROR(tokens[inst_token_id], "Instruction doesn't accept a number literal as its first operand."
+                                              << "\nRefer to its encoding for correct usage.");
+                            }
+                            break;
+                    }
+
                     current_instruction.imm64 = std::stoull(tokens[i].text);
                     break;
                 }
                 case TokenType::Identifier:
                 {
+                    if (operand_count <= -1) operand_count++;
+
                     // Check for keywords
                     if (tokens[i].text == "byte")
                     {
-                        bit_size = 8;
+                        current_instruction.size = 8;
                     }
                     else if (tokens[i].text == "word")
                     {
-                        bit_size = 16;
+                        current_instruction.size = 16;
                     }
                     else if (tokens[i].text == "dword")
                     {
-                        bit_size = 32;
+                        current_instruction.size = 32;
                     }
                     else if (tokens[i].text == "qword")
                     {
-                        bit_size = 64;
+                        current_instruction.size = 64;
                     }
                     else if (tokens[i].text == "sizeof")
                     {
@@ -879,8 +979,83 @@ qword_def_case:
                                     std::exit(-1);
                                 }
                                 break;
+                            case alvm::OpCode::Mov:
+                                if (it->second.type != DataType::Undefined)
+                                {
+                                    if (it->second.constant)
+                                    {
+                                        current_instruction.imm64 = it->second.value;
+                                    }
+                                    else
+                                    {
+                                        COMPILE_ERROR(tokens[i], "Instruction doesn't accept memory operands.\n"
+                                                      << "MOV Instruction encdoing:\n"
+                                                      << "\top1: [r] op2: [r, imm64]");
+                                    }
+                                }
+                                else
+                                {
+                                    COMPILE_ERROR(tokens[i], "Instruction expects one of the following types: BYTE, WORD, DWORD, QWORD");
+                                }
+                                break;
+                            case alvm::OpCode::Load:
+                                if (it->second.type != DataType::Undefined)
+                                {
+                                    if (it->second.constant)
+                                    {
+                                        COMPILE_ERROR(tokens[i], "Instruction doesn't accept an immediate value as an operand.\n"
+                                                      << "LOAD Instruction encoding:\n"
+                                                      << "\top1: [m] op2: [r]");
+                                    }
+                                    else
+                                    {
+                                        if (operand_count > 0)
+                                        {
+                                            current_instruction.reg2 = { .type = alvm::RegType::DS, .ptr = true, .displacement = (std::int64_t)it->second.addr };
+                                            current_instruction.size = SizeOfDataType(it->second.type);
+                                        }
+                                        else
+                                        {
+                                            COMPILE_ERROR(tokens[i], "Instruction doesn't accept a memory as the first operand.\n"
+                                                          << "LOAD Instruction encoding:\n"
+                                                          << "\top1: [m] op2: [r]");
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    COMPILE_ERROR(tokens[i], "Instruction expects one of the following types: BYTE, WORD, DWORD, QWORD");
+                                }
+                                break;
+                            case alvm::OpCode::Store:
+                                if (it->second.type != DataType::Undefined)
+                                {
+                                    if (it->second.constant)
+                                    {
+                                        current_instruction.imm64 = it->second.value;
+                                    }
+                                    else
+                                    {
+                                        if (operand_count == 0)
+                                        {
+                                            current_instruction.reg1 = { .type = alvm::RegType::DS, .ptr = true, .displacement = (std::int64_t)it->second.addr };
+                                            current_instruction.size = SizeOfDataType(it->second.type);
+                                        }
+                                        else
+                                        {
+                                            COMPILE_ERROR(tokens[i], "Instruction doesn't accept a memory as the second operand.\n"
+                                                          << "STORE Instruction encoding:\n"
+                                                          << "\top1: [m] op2: [r, imm64]");
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    COMPILE_ERROR(tokens[i], "Instruction expects one of the following types: BYTE, WORD, DWORD, QWORD");
+                                }
+                                break;
+                            case alvm::OpCode::Enter:
                             case alvm::OpCode::Jump:
-                            case alvm::OpCode::PInt:
                             case alvm::OpCode::Push:
                                 if (operand_count == 0)
                                 {
@@ -892,86 +1067,60 @@ qword_def_case:
                                         }
                                         else
                                         {
-                                            if (operand_count == 0)
-                                            {
-                                                current_instruction.reg1 = { .type = alvm::RegType::DS, .ptr = true, .displacement = (std::int64_t)it->second.addr };
-                                                current_instruction.size = SizeOfDataType(it->second.type);
-                                            }
-                                            else
-                                            {
-                                                current_instruction.reg2 = { .type = alvm::RegType::DS, .ptr = true, .displacement = (std::int64_t)it->second.addr };
-                                                current_instruction.size = SizeOfDataType(it->second.type);
-                                            }
+                                            COMPILE_ERROR(tokens[i], "Instruction expects an immediate value.");
                                         }
                                     }
                                     else
                                     {
-                                        std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): Constant '"
-                                                  << tokens[i].text << "' is not a number\n'"
-                                                  << alvm::Instruction::InstructionStr[(std::size_t)current_instruction.opcode]
-                                                  << "' Instruction Operand Encoding:\n"
-                                                  << "\top1: [r, m, imm8/16/32] op2: [N/A]\n";
-                                        std::exit(-1);
+                                        COMPILE_ERROR(tokens[i], "Instruction expects one of the following types: BYTE, WORD, DWORD, QWORD");
                                     }
                                 }
                                 else
                                 {
                                     std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): Instruction '"
                                               << alvm::Instruction::InstructionStr[(std::size_t)current_instruction.opcode]
-                                              << "' is a unary instruction.\n'"
-                                              << alvm::Instruction::InstructionStr[(std::size_t)current_instruction.opcode]
-                                              << "' Instruction Operand Encoding:\n"
+                                              << "' is a unary instruction.\n"
+                                              << utils::string::ToUpperCopy(alvm::Instruction::InstructionStr[(std::size_t)current_instruction.opcode])
+                                              << " Instruction Operand Encoding:\n"
                                               << "\top1: [r, m, imm8/16/32] op2: [N/A]\n";
                                     std::exit(-1);
                                 }
                                 break;
-                            case alvm::OpCode::Store:
-                            case alvm::OpCode::Load:
-                            case alvm::OpCode::Mov:
+                            case alvm::OpCode::PInt:
                                 if (operand_count == 0)
                                 {
-                                    if (ptr)
+                                    if (it->second.type != DataType::Undefined)
                                     {
-                                        m_CompiledCode.push_back(alvm::Instruction { .opcode = alvm::OpCode::Push, .reg1 = { alvm::RegType::R0 } });
-                                        m_CompiledCode.push_back(alvm::Instruction { .opcode = alvm::OpCode::Mov, .imm64 = it->second.value, .reg1 = { alvm::RegType::R0 } });
-                                        current_instruction.reg1 = { alvm::RegType::R0, true };
-                                        m_InstEpilogue.push_back(alvm::Instruction { .opcode = alvm::OpCode::Pop, .reg1 = { alvm::RegType::R0 } });
+                                        if (it->second.constant)
+                                        {
+                                            current_instruction.imm64 = it->second.value;
+                                        }
+                                        else
+                                        {
+                                            current_instruction.reg1 = { .type = alvm::RegType::DS, .ptr = true, .displacement = (std::int64_t)it->second.addr };
+                                            current_instruction.size = SizeOfDataType(it->second.type);
+                                        }
                                     }
                                     else
                                     {
-                                        std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): First operand of '"
-                                                  << alvm::Instruction::InstructionStr[(std::size_t)current_instruction.opcode] << "' doesn't take an immediate value.\n'"
-                                                  << alvm::Instruction::InstructionStr[(std::size_t)current_instruction.opcode]
-                                                  << "' Instruction Operand Encoding:\n"
-                                                  << "\top1: [r/m] op2: [reg]\n"
-                                                  << "\top1: [reg] op2: [r/m]\n"
-                                                  << "\top1: [r/m] op2: [imm8/16/32]\n";
-                                        std::exit(-1);
+                                        COMPILE_ERROR(tokens[i], "Instruction expects one of the following types: BYTE, WORD, DWORD, QWORD");
                                     }
                                 }
                                 else
                                 {
-                                    if (ptr)
-                                    {
-                                        m_CompiledCode.push_back(alvm::Instruction { .opcode = alvm::OpCode::Push, .reg1 = { alvm::RegType::R0 } });
-                                        m_CompiledCode.push_back(alvm::Instruction { .opcode = alvm::OpCode::Mov, .imm64 = it->second.value, .reg1 = { alvm::RegType::R0 } });
-                                        current_instruction.reg2 = { alvm::RegType::R0, true };
-                                        m_InstEpilogue.push_back(alvm::Instruction { .opcode = alvm::OpCode::Pop, .reg1 = { alvm::RegType::R0 } });
-                                    }
-                                    else
-                                    {
-                                        current_instruction.imm64 = it->second.value;
-                                    }
+                                    COMPILE_ERROR(tokens[i], "Instruction "
+                                                  << alvm::Instruction::InstructionStr[(std::size_t)current_instruction.opcode]
+                                                  << " is a unary instruction.\n"
+                                                  << utils::string::ToUpperCopy(alvm::Instruction::InstructionStr[(std::size_t)current_instruction.opcode])
+                                                  << " Instruction Operand Encoding:\n"
+                                                  << "\top1: [r, m, imm8/16/32] op2: [N/A]\n");
                                 }
                                 break;
                         }
                     }
                     else
                     {
-                        std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): "
-                                  << "Undefined Identifier '" << tokens[i].text << "'\n"
-                                  << std::endl;
-                        std::exit(-1);
+                        COMPILE_ERROR(tokens[i], "Undefined Identifier '" << tokens[i].text << "'.");
                     }
                     break;
                 }
@@ -986,7 +1135,7 @@ qword_def_case:
         }
 
         m_CompiledCode.push_back(alvm::Instruction { .opcode = alvm::OpCode::End });
-        return { m_CompiledCode, m_DataSection };
+        return { m_CompiledCode, m_DataSection, CompilerStatus::Ok };
     }
 
     alvm::OpCode Compiler::GetInst(std::string inst)

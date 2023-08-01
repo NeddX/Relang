@@ -17,6 +17,7 @@ namespace rlang::rmc {
 	DWord,
 	QWord
 	};
+
 	struct DataInfo
 	{
 		std::uintptr_t addr = 0;
@@ -24,6 +25,19 @@ namespace rlang::rmc {
 		std::uint64_t value = 0;
 		bool constant = false;
 		DataType type = DataType::Undefined;
+	};
+
+	enum CompilerStatus
+	{
+	Ok,
+	Error
+	};
+
+	struct CompilerResult
+	{
+		std::vector<alvm::Instruction> compiledCode;
+		std::vector<std::uint8_t> dataSection;
+		CompilerStatus status;
 	};
 
 	struct Compiler
@@ -43,7 +57,7 @@ namespace rlang::rmc {
 		static void Cleanup();
 
 	public:
-		static std::pair<std::vector<alvm::Instruction>, std::vector<std::uint8_t>> Compile(const TokenList& tokens);
+		static CompilerResult Compile(const TokenList& tokens);
 		
 	private:
 		static alvm::OpCode GetInst(std::string inst);

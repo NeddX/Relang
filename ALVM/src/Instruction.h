@@ -6,7 +6,7 @@
 #include "Register.h"
 
 namespace rlang::alvm {
-    enum class OpCode : std::int16_t
+    enum class OpCode : std::uint16_t
     {
         End,
         Push,
@@ -21,11 +21,10 @@ namespace rlang::alvm {
         PStr,
         Cmp,
         Mov,
-        Jump,
-        CJump,
-        CNJump,
+        Enter,
         Call,
         Return,
+        Leave,
         Malloc,
         Free,
         Lrzf,
@@ -35,6 +34,7 @@ namespace rlang::alvm {
         System,
         Syscall,
         InvokeC,
+        Jump,
         Jz,
         Jnz,
         Js,
@@ -58,6 +58,7 @@ namespace rlang::alvm {
         XOR,
         TEST,
 
+        DumpFlags,
         Nop
     };
 
@@ -67,7 +68,7 @@ namespace rlang::alvm {
         std::uint64_t imm64 = 0;
         Register reg1 = { RegType::Nul, false };
         Register reg2 = { RegType::Nul, false };
-        std::int8_t size = 32; 
+        std::int8_t size = 64;
         std::vector<std::int8_t> bytes;
 
     public:
@@ -86,11 +87,10 @@ namespace rlang::alvm {
             "pstr",
             "cmp",
             "mov",
-            "jmp",
-            "cjmp",
-            "cjp",
+            "enter",
             "call",
             "ret",
+            "leave",
             "malloc",
             "free",
             "lrzf",
@@ -100,6 +100,7 @@ namespace rlang::alvm {
             "system",
             "syscall",
             "invokec",
+            "jmp",
             "jz",
             "jnz",
             "js",
@@ -119,6 +120,7 @@ namespace rlang::alvm {
             "not",
             "xor",
             "test",
+            "_dbg_dumpflags",
             "nop"
         };
     };
