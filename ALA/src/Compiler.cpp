@@ -589,6 +589,7 @@ qword_def_case:
                                 case alvm::OpCode::Juge:
                                 case alvm::OpCode::Jul:
                                 case alvm::OpCode::Jule:
+				case alvm::OpCode::June:
                                 case alvm::OpCode::Enter:
                                 case alvm::OpCode::PInt:
                                 case alvm::OpCode::PStr:
@@ -596,7 +597,8 @@ qword_def_case:
                                 case alvm::OpCode::Pop:
                                 case alvm::OpCode::Mul:
                                 case alvm::OpCode::Div:
-                                case alvm::OpCode::System:
+				case alvm::OpCode::Neg:
+				case alvm::OpCode::System:
                                 case alvm::OpCode::GetChar:
                                 case alvm::OpCode::Inc:
                                 case alvm::OpCode::Dec:
@@ -750,6 +752,7 @@ qword_def_case:
                                     case alvm::OpCode::Juge:
                                     case alvm::OpCode::Jul:
                                     case alvm::OpCode::Jule:
+				    case alvm::OpCode::June:
                                         break;
                                     default:
                                         COMPILE_ERROR(tokens[i], "Instruction doesn't accept a label as an operand.");

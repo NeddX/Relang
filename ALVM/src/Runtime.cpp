@@ -398,17 +398,23 @@ namespace rlang::alvm {
 		std::uint32_t op1 = m_Registers[RegType::R0], op2;
 		if (m_Pc->reg1.ptr)
 		{
-			// r, m
+			// r0, m
 			op2 = ReadFrom64(m_Registers[m_Pc->reg1]);
 		}
 		else
 		{
-			// r, r
+			// r0, r
 			op2 = m_Registers[m_Pc->reg1];
 		}
 
 		m_Registers[RegType::R0] = op1 / op2;
 		m_Registers[RegType::R3] = op1 % op2;
+		m_Pc++;
+	}
+
+	void ALVM::Neg()
+	{
+		m_Registers[m_Pc->reg1] *= -1;
 		m_Pc++;
 	}
 
@@ -498,6 +504,7 @@ namespace rlang::alvm {
 			// r
 			std::uint64_t op1 = m_Registers[m_Pc->reg1], res = --op1;
 			TriggerFlags(op1, 1, res, std::int64_t, 0);
+			m_Registers[m_Pc->reg1] = res;
 		}
 		m_Pc++;
 	}

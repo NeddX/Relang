@@ -8,7 +8,7 @@
 #include "Instruction.h"
 
 namespace rlang::alvm {
-	constexpr int STACK_SIZE = 50;//1024 * 1024 * 2;
+	constexpr int STACK_SIZE = 1024 * 1024 * 2;
 
 	class ALVM
 	{
@@ -29,6 +29,7 @@ namespace rlang::alvm {
 			&ALVM::Sub,
 			&ALVM::Mul,
 			&ALVM::Div,
+			&ALVM::Neg,
 			&ALVM::Increment,
 			&ALVM::Decrement,
 			&ALVM::PrintInt,
@@ -64,6 +65,7 @@ namespace rlang::alvm {
 			&ALVM::JmpIfNotCarry,//&ALVM::JmpIfUnsignedGreaterThan,
 			&ALVM::JmpIfCarry, //&ALVM::JmpIFUnsignedLessThan,
 			&ALVM::JmpIfZero, //&ALVM::JmpIfUnsignedEqualTo,
+			&ALVM::JmpIfNotZero, // June
 
 			&ALVM::JmpIfUnsignedGreaterOrEqualTo,
 			&ALVM::JmpIfUnsignedLesserOrEqualTo,
@@ -93,11 +95,12 @@ namespace rlang::alvm {
 		void Sub();
 		void Mul();
 		void Div();
+		void Neg();
 		void Increment();
 		void Decrement();
 		void PrintInt();
 		void PrintStr();
-        void Compare();
+        	void Compare();
 		void Move();
 		void Enter();
 		void Call();
