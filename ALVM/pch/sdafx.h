@@ -30,8 +30,9 @@
 #include <initializer_list>
 
 // Platform specific
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__linux__)
 #include <unistd.h>
+#include <dlfcn.h>
 #else
 #ifdef _WIN32
 #define NOMINMAX
@@ -39,8 +40,6 @@
 #include <windows.h>
 #undef CreateWindow
 //#include <corecrt_io.h>
-#else
-#include <unistd.h>
 #endif
 #endif
 

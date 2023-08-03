@@ -8,7 +8,7 @@
 #include "Instruction.h"
 
 namespace rlang::alvm {
-	constexpr int STACK_SIZE = 1024 * 1024 * 2;
+	constexpr int STACK_SIZE = 50;//1024 * 1024 * 2;
 
 	class ALVM
 	{
@@ -41,6 +41,8 @@ namespace rlang::alvm {
 			&ALVM::Leave,
 			&ALVM::Malloc,
 			&ALVM::Free,
+			&ALVM::Memset,
+			&ALVM::Memcpy,
 			&ALVM::Lrzf,
 			&ALVM::Srzf,
 			&ALVM::Store,
@@ -48,6 +50,7 @@ namespace rlang::alvm {
 			&ALVM::System,
 			&ALVM::Syscall,
 			&ALVM::InvokeC,
+			&ALVM::GetChar,
 			&ALVM::Jump,
 			&ALVM::JmpIfZero,
 			&ALVM::JmpIfNotZero,
@@ -102,6 +105,8 @@ namespace rlang::alvm {
 		void Leave();
 		void Malloc();
 		void Free();
+		void Memset();
+		void Memcpy();
 		void Lrzf();
 		void Srzf();
 		void Store();
@@ -109,6 +114,7 @@ namespace rlang::alvm {
 		void System();
 		void Syscall();
 		void InvokeC();
+		void GetChar();
 		void Jump();
 		void JmpIfZero();
 		void JmpIfNotZero();

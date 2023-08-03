@@ -3,8 +3,8 @@
 clear
 echo "Build started."
 
-export CC=$(where clang)
-export CXX=$(where clang++)
+export CC=$(which clang)
+export CXX=$(which clang++)
 
 if [ ! -d "builds" ]; then
     echo "Configuring CMake..."

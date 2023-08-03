@@ -236,7 +236,7 @@ byte_def_case:
                                                                 }
                                                                 std::size_t size = std::stoul(tokens[i - 1].text);
                                                                 std::uint8_t data =
-                                                                    *((std::uint8_t*)m_DataSection.data() + inf.size - 1);
+                                                                    *((std::uint8_t*)m_DataSection.data() + inf.size);
                                                                 m_DataSection.resize(inf.size + size);
                                                                 for (auto x = 0; x < size; ++x)
                                                                     *((std::uint8_t*)m_DataSection.data() + inf.size + x) = data;
@@ -578,7 +578,7 @@ qword_def_case:
                                 case alvm::OpCode::Jump:
                                 case alvm::OpCode::Jc:
                                 case alvm::OpCode::Jcn:
-                                case alvm::OpCode::Je:
+                                case alvm::OpCode::Jue:
                                 case alvm::OpCode::Jl:
                                 case alvm::OpCode::Jno:
                                 case alvm::OpCode::Jns:
@@ -597,6 +597,11 @@ qword_def_case:
                                 case alvm::OpCode::Mul:
                                 case alvm::OpCode::Div:
                                 case alvm::OpCode::System:
+                                case alvm::OpCode::GetChar:
+                                case alvm::OpCode::Inc:
+                                case alvm::OpCode::Dec:
+                                case alvm::OpCode::Malloc:
+                                case alvm::OpCode::Free:
                                     if (operand_count > 0)
                                     {
                                         COMPILE_ERROR(tokens[inst_token_id], "Instruction is unary.");
@@ -612,7 +617,7 @@ qword_def_case:
                                 default:
                                     if (operand_count <= 0 || operand_count > 1)
                                     {
-                                        COMPILE_ERROR(tokens[inst_token_id], "Invalid number of operands passed to Instruction, refer to its encoding for correct usage.");
+                                        COMPILE_ERROR(tokens[inst_token_id], "Invalid number of operands passed to Instruction.\nRefer to its encoding for correct usage.");
                                     }
                                     break;
                             }
@@ -630,6 +635,10 @@ qword_def_case:
                     //bit_size = current_instruction.size;
 
                     current_instruction.opcode = GetInst(tokens[i].text);
+                    if (current_instruction.opcode == alvm::OpCode::Nop && utils::string::ToLowerCopy(tokens[i].text) != "nop")
+                    {
+                        COMPILE_ERROR(tokens[i], "Unknown Instruction " << tokens[i].text << ".");
+                    }
                     break;
                 }
                 case TokenType::Operator:
@@ -730,7 +739,7 @@ qword_def_case:
                                     case alvm::OpCode::Jump:
                                     case alvm::OpCode::Jc:
                                     case alvm::OpCode::Jcn:
-                                    case alvm::OpCode::Je:
+                                    case alvm::OpCode::Jue:
                                     case alvm::OpCode::Jl:
                                     case alvm::OpCode::Jno:
                                     case alvm::OpCode::Jns:
@@ -838,12 +847,17 @@ qword_def_case:
 
                     switch (current_instruction.opcode)
                     {
+                        case alvm::OpCode::GetChar:
+                            COMPILE_ERROR(tokens[inst_token_id], "Instruction doesn't accept a number literal as an operand."
+                                          << "\nRefer to its encoding for correct usage.");
+                            break;
                         case alvm::OpCode::Load:
                             if (operand_count > 0)
                             {
-                                COMPILE_ERROR(tokens[inst_token_id], "Instruction doesn't take number literal as its second operand."
+                                COMPILE_ERROR(tokens[inst_token_id], "Instruction doesn't accept a number literal as its second operand."
                                               << "\nRefer to its encoding for correct usage.");
                             }
+                            break;
                         case alvm::OpCode::Store:
                         case alvm::OpCode::Mov:
                         case alvm::OpCode::System:
@@ -942,7 +956,16 @@ qword_def_case:
                                 COMPILE_ERROR(tokens[i], "'" << tokens[i].text << "' doesn't exist in the current context.");
                             }
 
-                            current_instruction.imm64 = it->second.addr;
+                            if (operand_count == 0)
+                            {
+                                current_instruction.reg1 = { .type = alvm::RegType::DS, .ptr = false, .displacement = (std::int64_t)it->second.addr };
+                            }
+                            else if (operand_count == 1)
+                            {
+                                current_instruction.reg2 = { .type = alvm::RegType::DS, .ptr = false, .displacement = (std::int64_t)it->second.addr };
+
+                            }
+                            //current_instruction.imm64 = it->second.addr;
                         }
                     }
                     else if (auto it = m_DataNameTable.find(tokens[i].text); it != m_DataNameTable.end())
