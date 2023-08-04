@@ -6,7 +6,7 @@
 #include "Register.h"
 
 namespace rlang::alvm {
-    enum class OpCode : std::uint16_t
+    enum class OpCode : std::uint8_t
     {
         End,
         Push,
@@ -75,7 +75,6 @@ namespace rlang::alvm {
         Register reg1 = { RegType::Nul, false };
         Register reg2 = { RegType::Nul, false };
         std::int8_t size = 64;
-        std::vector<std::int8_t> bytes;
 
     public:
         inline static const std::vector<std::string> InstructionStr =

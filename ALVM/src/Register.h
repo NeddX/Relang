@@ -31,14 +31,6 @@ namespace rlang::alvm {
 		// Status Flags Register
 		SFR,
 
-		// Flags
-		//ZF,
-		//CF,
-		//OF,
-		//SF,
-		//PF,
-		//AF,
-
 		// Segement pointers
 		CS,
 		SS,
@@ -80,13 +72,6 @@ namespace rlang::alvm {
 			"sp",
 
 			"sfr",
-
-			//"zf",
-			//"cf",
-			//"of",
-			//"sf",
-			//"pf",
-			//"af",
 
 			"cs",
 			"ss",
