@@ -594,7 +594,7 @@ qword_def_case:
                                 case alvm::OpCode::PInt:
                                 case alvm::OpCode::PStr:
                                 case alvm::OpCode::Push:
-                                case alvm::OpCode::Pop:
+				case alvm::OpCode::Pop:
                                 case alvm::OpCode::Mul:
                                 case alvm::OpCode::Div:
 				case alvm::OpCode::Neg:
