@@ -252,7 +252,7 @@ namespace rlang::alvm {
 
 	void ALVM::Add()
 	{
-		std::uint32_t op1, op2, res;
+		std::uint64_t op1, op2, res;
 
 		if (m_Pc->reg1.type != RegType::Nul)
 		{
@@ -315,7 +315,7 @@ namespace rlang::alvm {
 
 	void ALVM::Sub()
 	{
-		std::uint32_t op1, op2, res;
+		std::uint64_t op1, op2, res;
 
 		if (m_Pc->reg1.type != RegType::Nul)
 		{
@@ -378,7 +378,7 @@ namespace rlang::alvm {
 
 	void ALVM::Mul()
 	{
-		std::uint32_t op1 = m_Registers[RegType::R0], op2;
+		std::uint64_t op1 = m_Registers[RegType::R0], op2;
 		if (m_Pc->reg1.ptr)
 		{
 			// r0, m
@@ -395,7 +395,7 @@ namespace rlang::alvm {
 
 	void ALVM::Div()
 	{
-		std::uint32_t op1 = m_Registers[RegType::R0], op2;
+		std::uint64_t op1 = m_Registers[RegType::R0], op2;
 		if (m_Pc->reg1.ptr)
 		{
 			// r0, m
@@ -509,8 +509,98 @@ namespace rlang::alvm {
 		m_Pc++;
 	}
 
+	void ALVM::Printf()
+	{
+		// r, r
+		// fstr_ptr, args_ptr
+		std::size_t total_size = 0;
+		std::size_t last_occurence = 0;
+		const std::size_t size = std::strlen((const char*)m_Registers[m_Pc->reg1] + m_Pc->reg1.displacement);
+		const unsigned char* format_str = (const unsigned char*)m_Registers[m_Pc->reg1] + m_Pc->reg1.displacement;
+
+		for (auto i = 0; i < size; ++i)
+		{
+			switch (format_str[i])
+			{
+				case '%':
+				{
+					auto citer = i;
+					auto riter = 0;
+
+					// Find end of the format specifier
+					for (auto x = i; x < size; ++x)
+					{
+						if (format_str[x] >= 0 && format_str[x] <= 32 || format_str[x] == 128)
+						{
+							riter = x - citer;
+							break;
+						}
+					}
+
+					// Print all the characters before %
+					//char* before_f = (char*)std::malloc(i - last_occurence + 1);
+					//std::memset(before_f, 0, i - last_occurence + 1);
+					//std::memcpy(before_f, format_str + last_occurence, i - last_occurence);
+					//last_occurence = i + riter;
+					//std::printf("%s", before_f);
+
+					// Substring that shite
+					char* f = (char*)std::malloc(citer + riter + 1);
+					std::memset(f, 0, citer + riter + 1);
+					std::memcpy(f, format_str + citer, riter);
+
+					// Now compare and print relative to the fomrat specifier
+					if (std::strcmp(f, "%d") == 0)
+					{
+						std::printf("%d",
+									*((std::int32_t*)(m_Registers[m_Pc->reg2] + m_Pc->reg2.displacement + total_size)));
+						total_size += 4;
+					}
+					else if (std::strcmp(f, "%llu") == 0)
+					{
+						std::printf("%llu",
+									*((std::uint64_t*)(m_Registers[m_Pc->reg2] + m_Pc->reg2.displacement + total_size)));
+						total_size += 8;
+					}
+					else if (std::strcmp(f, "%lld") == 0)
+					{
+						std::printf("%lld",
+									*((std::int64_t*)(m_Registers[m_Pc->reg2] + m_Pc->reg2.displacement + total_size)));
+						total_size += 8;
+					}
+					else if (std::strcmp(f, "%s") == 0)
+					{
+						std::printf("%s", (const char*)m_Registers[m_Pc->reg2] + m_Pc->reg2.displacement + total_size);
+					}
+					else
+					{
+						// Not a real format specifier so treat it just like a regular string
+						std::printf("%s", f);
+					}
+					std::free(f);
+					i += riter - 1;
+					break;
+				}
+				default:
+					std::printf("%c", format_str[i]);
+					break;
+			}
+		}
+		m_Pc++;
+	}
+
 	void ALVM::PrintInt()
 	{
+		static const char* formats[] =
+		{
+			"%c",
+			"%d",
+			"%f",
+			"%u",
+			"%e",
+			"%o",
+			"%s",
+		};
 		if (m_Pc->reg1.type != RegType::Nul)
 		{
 			if (m_Pc->reg1.ptr)
@@ -535,7 +625,7 @@ namespace rlang::alvm {
 					default:
 					case 64:
 					{
-						std::printf("%lu", ReadFrom64((std::size_t)m_Registers[m_Pc->reg1] + m_Pc->reg1.displacement));
+						std::printf("%llu", ReadFrom64((std::size_t)m_Registers[m_Pc->reg1] + m_Pc->reg1.displacement));
 						break;
 					}
 				}
@@ -547,7 +637,7 @@ namespace rlang::alvm {
 		}
 		else
 		{
-			std::printf("%lu", m_Pc->imm64);
+			std::printf("%llu", m_Pc->imm64);
 		}
 		m_Pc++;
 	}

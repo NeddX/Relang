@@ -25,7 +25,7 @@ namespace rlang::rmc {
     {
         TokenType type = TokenType::Whitespace;
         std::string text;
-        std::int64_t data = 0;
+        std::uint64_t data = 0;
         std::size_t line = 0;
         std::size_t cur = 0;
     

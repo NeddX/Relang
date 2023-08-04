@@ -1,0 +1,160 @@
+.section data:
+	byte	    nl	            #10, #0
+    byte        expr_f          "Expression Result: %d\n", #0
+
+    const       VAR_X           #420
+    const       VAR_Y           #69
+    const       ITERATOR_NUM    #1337
+
+.section code:
+    call @_main
+	mov %r0, #1
+	end
+
+@_main:
+	enter #16
+
+	; Push the two arguments needed for the expression procedure.
+	push VAR_X
+	push VAR_Y
+	call @expression
+
+    ; Store our result to %r0 and then print it
+    store qword [%bp-#8], %r0
+    printf expr_f, qword [%bp-#8]
+
+    ; Cleanup
+    add %sp, #16
+
+    ; Push the argument needed for tvisible procedure.
+	push ITERATOR_NUM
+	call @tvisible
+
+    ; Cleanup
+    add %sp, #8
+
+    leave
+	ret
+
+; ----------------------------------------------------------------------------------------------------------------------
+; Function:                 tvisible
+; Description:              Iterates through X by decrementing and prints every iteration count that is divisible to 3.
+; Args:
+;   -   [%bp+#16]:          let X : u64: Number to iterate from.
+; Returns:
+;   -   none
+; ----------------------------------------------------------------------------------------------------------------------
+@tvisible:
+	; Create our stack frame
+	push %bp
+	mov %bp, %sp
+
+	; Preserve these registers
+	push %r0
+	push %r1
+	push %r2
+
+	; Load our argument off the stack
+	load %r1, qword [%bp+#16]
+
+	; Initialize our local registers
+	mov %r2, #3
+	mov %r3, #0
+
+.l1:
+	; Check if %r1 is zero, if yes then stop, continue otherwise
+	cmp %r1, #0
+	jue .l2
+
+	; Try and divide our counter to 3 and check the remainder, if it's zero then continue thus printing the value of our counter, jump to .l3 otherwise
+	mov %r0, %r1
+	div %r2
+	cmp %r3, #0
+	june .l3
+	pint %r1
+	pstr nl
+.l3:
+	; Decrement our counter and loop again
+	dec %r1
+	jmp .l1
+
+.l2:
+
+	; Retrieve our registers back in reverse because of the stack's LIFO nature
+	pop %r2
+	pop %r1
+	pop %r0
+
+	; Free our stack frame and return
+	leave
+	ret
+
+; ---------------------------------------------------------------------------------------------------------------------------
+; Function:                 expression
+; Description:              Evaluates the following expression: -((x * y) + (x / y) - y / (x + y)) and returns the result.
+; Args:
+;   -   [%bp+#24]:          let x : u64:        The X variable inside the expression.
+;   -   [%bp+#16]:          let y : u64:        The Y variable inside the expression.
+; Returns:
+;   -   %r0:                let result u64:     Result of the expression.
+; ---------------------------------------------------------------------------------------------------------------------------
+@expression:
+	; Create our stack frame and allocate 32 bytes of data on the stack
+	enter #32
+
+	; Pereserve these registers
+	push %r2
+	push %r3
+	push %r4
+	push %r5
+
+	; Load the arguments of the stack
+	load %r2, qword [%bp+#24]	; Our X
+	load %r4, qword [%bp+#16]	; Our Y
+
+	; Local variables
+	store qword [%bp-#24], #0	; First expression result holder
+	store qword [%bp-#32], #0	; Second expression result holder
+
+	; Calculate the first part of the expression, that is (x * y)
+	mov %r0, %r2
+	mul %r4
+	store qword [%bp-#24], %r0	; Save our first expression result to its appropiate variable
+
+	; Calculate the second part of our expression, that is (x / y)
+	mov %r0, %r2
+	mov %r3, #0
+	div %r4
+	store qword [%bp-#32], %r0	; Save our second expression result to its appropiate variable
+
+	; Calculate the third part of our expression, that is (x + y)
+	mov %r0, %r2
+	add %r0, %r4
+	mov %r5, %r0                ; Save our third result to r5 register
+
+	; Calculate the fourth part of our expression, that is y / (x + y)
+	mov %r0, %r4
+	div %r5
+	mov %r5, %r0                ; Save our fourth result to r5 register
+
+	; Calculate the fifth part of our expression, that is (x * y) + (x / y)
+	load %r0, qword [%bp-#24]   ; Load our first result to r0
+	load %r1, qword [%bp-#32]   ; Load our second result to r1
+	add %r0, %r1
+	store qword [%bp-#24], %r0  ; Store our fifth result to the stack
+
+	; Calculate the sixth part of our expression, that is (x * y) + (x / y) - y / (x + y)
+	sub %r0, %r5                ; Perform subtraction and save our sixth result to r0
+
+    ; Negeate the result and we're done here
+	neg %r0
+
+	; Retrieve back our registers in reverse because of the stack's LIFO nature
+	pop %r5
+	pop %r4
+	pop %r3
+	pop %r2
+
+	; Free our stack frame and return
+	leave
+	ret

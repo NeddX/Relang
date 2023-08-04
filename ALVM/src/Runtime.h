@@ -32,6 +32,7 @@ namespace rlang::alvm {
 			&ALVM::Neg,
 			&ALVM::Increment,
 			&ALVM::Decrement,
+			&ALVM::Printf,
 			&ALVM::PrintInt,
 			&ALVM::PrintStr,
             &ALVM::Compare,
@@ -98,9 +99,10 @@ namespace rlang::alvm {
 		void Neg();
 		void Increment();
 		void Decrement();
+		void Printf();
 		void PrintInt();
 		void PrintStr();
-        	void Compare();
+        void Compare();
 		void Move();
 		void Enter();
 		void Call();

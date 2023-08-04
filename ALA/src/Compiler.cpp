@@ -589,21 +589,29 @@ qword_def_case:
                                 case alvm::OpCode::Juge:
                                 case alvm::OpCode::Jul:
                                 case alvm::OpCode::Jule:
-				case alvm::OpCode::June:
+                                case alvm::OpCode::June:
                                 case alvm::OpCode::Enter:
                                 case alvm::OpCode::PInt:
                                 case alvm::OpCode::PStr:
                                 case alvm::OpCode::Push:
-				case alvm::OpCode::Pop:
+                                case alvm::OpCode::Pop:
                                 case alvm::OpCode::Mul:
                                 case alvm::OpCode::Div:
-				case alvm::OpCode::Neg:
-				case alvm::OpCode::System:
+                                case alvm::OpCode::Neg:
+                                case alvm::OpCode::System:
                                 case alvm::OpCode::GetChar:
                                 case alvm::OpCode::Inc:
                                 case alvm::OpCode::Dec:
                                 case alvm::OpCode::Malloc:
                                 case alvm::OpCode::Free:
+                                    // Instructions that accept both no operands or a single operand.
+                                    switch (current_instruction.opcode)
+                                    {
+                                        case alvm::OpCode::Pop:
+                                            goto ok_instruction_case;
+                                            break;
+                                    }
+
                                     if (operand_count > 0)
                                     {
                                         COMPILE_ERROR(tokens[inst_token_id], "Instruction is unary.");
@@ -623,6 +631,7 @@ qword_def_case:
                                     }
                                     break;
                             }
+ok_instruction_case:
                             m_CompiledCode.push_back(current_instruction);
                         }
                         if (!m_InstEpilogue.empty())
@@ -975,6 +984,35 @@ qword_def_case:
                     {
                         switch (current_instruction.opcode)
                         {
+                            // Instructions that accept registers in their both operands
+                            default:
+                                if (it->second.type != DataType::Undefined)
+                                {
+                                    if (it->second.constant)
+                                    {
+                                        COMPILE_ERROR(tokens[i], "Instruction doesn't accept an immediate value as an operand.\n"
+                                                      << "LOAD Instruction encoding:\n"
+                                                      << "\top1: [m] op2: [r]");
+                                    }
+                                    else
+                                    {
+                                        if (operand_count == 0)
+                                        {
+                                            current_instruction.reg1 = { .type = alvm::RegType::DS, .ptr = true, .displacement = (std::int64_t)it->second.addr };
+                                            current_instruction.size = SizeOfDataType(it->second.type);
+                                        }
+                                        else if (operand_count > 0)
+                                        {
+                                            current_instruction.reg2 = { .type = alvm::RegType::DS, .ptr = true, .displacement = (std::int64_t)it->second.addr };
+                                            current_instruction.size = SizeOfDataType(it->second.type);
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    COMPILE_ERROR(tokens[i], "Instruction expects one of the following types: BYTE, WORD, DWORD, QWORD");
+                                }
+                                break;
                             case alvm::OpCode::System:
                             case alvm::OpCode::PStr:
                                 if (operand_count == 0)

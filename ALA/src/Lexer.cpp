@@ -3,7 +3,7 @@
 namespace rlang::rmc {
     void Token::Dump() const
     {
-        std::printf("token { \"%s\" type: %s data: %lu [%lu, %lu] }\n",
+        std::printf("token { \"%s\" type: %s data: %llu [%lu, %lu] }\n",
                     text.c_str(), GET_TOKEN_STR(type).c_str(), data, line, cur);
     }
 
