@@ -3,4 +3,5 @@ builds/
 .cache/
 .ccls/
 .ignore/
+bin/
 compile_commands.json
