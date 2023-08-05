@@ -21,7 +21,8 @@
 
     ; Store our result to %r0 and then print it
     store qword [%bp-#8], %r0
-    printf expr_f, qword [%bp-#8]
+	lea %r0, [%bp-#8]
+    printf expr_f, %r0
 
     ; Cleanup
     add %sp, #16
