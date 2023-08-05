@@ -3,6 +3,7 @@ file(GLOB_RECURSE ALVM_SOURCES "src/*.cpp")
 file(GLOB_RECURSE ALVM_HEADERS "src/*.h")
 
 add_library(ALVM-static STATIC ${ALVM_SOURCES} ${ALVM_HEADERS})
+add_executable(ALVM ${ALVM_SOURCES} ${ALVM_HEADERS})
 #add_library(ALVM-static-lib STATIC ${ALVM_SOURCES} ${ALVM_HEADERS})
 
 #set_property(TARGET ALVM-static-lib PROPERTY CXX_STANDARD 20)
@@ -17,7 +18,9 @@ target_include_directories(ALVM-static PUBLIC include/)
 
 # Add the precompiled header
 target_include_directories(ALVM-static PUBLIC pch/)
+target_include_directories(ALVM PUBLIC pch/)
 target_precompile_headers(ALVM-static PRIVATE pch/sdafx.h)
+target_precompile_headers(ALVM PRIVATE pch/sdafx.h)
 #target_include_directories(ALVM-static-lib PUBLIC pch/)
 #target_precompile_headers(ALVM-static-lib PRIVATE pch/sdafx.h)
 

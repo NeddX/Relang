@@ -4,7 +4,7 @@
 #include <sdafx.h>
 
 namespace rlang::alvm {
-	enum class RegType : std::uint8_t
+	enum RegType : std::uint8_t
 	{
 		// General purpose
 		R0,
@@ -39,12 +39,18 @@ namespace rlang::alvm {
 		FS,
 		GS,
 
-		Nul
+		// Special, Not real regisers
+		// Indicates if a registers is a pointer
+		PTR = 0x80,
+		// Inverted PTR for dereferencing and recovering the original register using bitwise AND
+		DPTR = 0x7F,
+		// No register
+		NUL
 	};
 
 	struct Register
 	{
-		RegType type = RegType::Nul;
+		RegType type = RegType::NUL;
 		bool ptr = false;
 		std::int64_t displacement = 0;
 
@@ -87,7 +93,7 @@ namespace rlang::alvm {
 	struct Registers
 	{
 	private:
-		std::array<std::uintptr_t, (std::size_t)RegType::Nul> m_Buffer = { 0 };
+		std::array<std::uintptr_t, (std::size_t)RegType::NUL> m_Buffer = { 0 };
 
 	public:
 		inline std::uintptr_t& operator[](const std::size_t index) { return m_Buffer[index]; }

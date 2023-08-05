@@ -1,5 +1,5 @@
-#ifndef ALVM_ALA_LEXER_H
-#define ALVM_ALA_LEXER_H
+#ifndef ALVM_ALASM_LEXER_H
+#define ALVM_ALASM_LEXER_H
 
 #include <vector>
 #include <string>
@@ -58,4 +58,4 @@ namespace rlang::rmc {
     };
 }
 
-#endif // ALVM_ALA_LEXER_H
+#endif // ALVM_ALASM_LEXER_H

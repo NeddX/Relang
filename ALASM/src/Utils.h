@@ -1,5 +1,5 @@
-#ifndef ALVM_ALA_UTILS_H
-#define ALVM_ALA_UTILS_H
+#ifndef ALVM_ALASM_UTILS_H
+#define ALVM_ALASM_UTILS_H
 
 #include <sdafx.h>
 
@@ -30,4 +30,4 @@ namespace rlang::rmc::utils {
 	}
 }
 
-#endif // ALVM_ALA_UTILS_H
+#endif // ALVM_ALASM_UTILS_H

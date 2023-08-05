@@ -5,7 +5,7 @@
 #include "CommonUtils.h"
 #include "ALVM_Testman.h"
 
-#include <ALA.h>
+#include <ALASM.h>
 
 using std::ifstream;
 
@@ -26,6 +26,7 @@ void TestAndExpect(void (*function)(), const std::string& expect)
 
 int main(int argc, const char* argv[])
 {
+    /*
     std::ifstream fs;
     fs.open("./basic.amc");
 
@@ -46,10 +47,19 @@ int main(int argc, const char* argv[])
     using Reg = rlang::alvm::RegType;
 
     auto tk_list = rlang::rmc::Lexer::Start(src);
-    auto compiler_result = rlang::rmc::Compiler::Compile(tk_list);
-    auto& compiled_code = compiler_result.compiledCode;
 
-    if (compiler_result.status == rlang::rmc::CompilerStatus::Error)
+    const rlang::rmc::AssemblerOptions opt =
+    {
+        .type = rlang::rmc::OutputType::XBin,
+        .tokens = tk_list,
+        .filename = "o.aex",
+        .path = "./"
+    };
+
+    auto assembler_result = rlang::rmc::Assembler::Assemble(opt);
+    auto& assembled_code = assembler_result.assembledCode;
+
+    if (assembler_result.status != rlang::rmc::AssemblerStatus::Ok)
     {
         std::cerr << "\nCompilation failed.\n";
         std::exit(-1);
@@ -59,17 +69,17 @@ int main(int argc, const char* argv[])
     if (argc > 1 && std::strcmp(argv[1], "--dump-intermediate") == 0)
     {
         std::cout << "Dumping intermediate code...\n\n";
-        for (int i = 0; const auto& inst : compiled_code)
+        for (int i = 0; const auto& inst : assembled_code)
         {
             std::cout << "0x" << i++ << ":\t" << std::hex << "0x" << (std::uint64_t)inst.opcode << "\t\t" << rlang::alvm::Instruction::InstructionStr[(std::size_t)inst.opcode];
 
-            if (inst.reg1.type == rlang::alvm::RegType::Nul)
+            if (inst.reg1 == rlang::alvm::RegType::NUL)
             {
                 std::cout << " #0x" << inst.imm64;
             }
             else
             {
-                if (inst.reg1.ptr)
+                if (inst.reg1 & rlang::alvm::RegType::PTR)
                 {
                     std::cout << " ";
                     switch (inst.size)
@@ -88,21 +98,21 @@ int main(int argc, const char* argv[])
                             std::cout << "qword";
                             break;
                     }
-                    std::cout << " [%" << rlang::alvm::Register::RegisterStr[(std::size_t)inst.reg1.type];
-                    if (inst.reg1.displacement != 0)
+                    std::cout << " [%" << rlang::alvm::Register::RegisterStr[(std::size_t)(inst.reg1 & rlang::alvm::RegType::DPTR)];
+                    if (inst.displacement != 0)
                     {
-                        std::cout << ((inst.reg1.displacement < 0) ? "-#0x" : "+#0x") << std::abs(inst.reg1.displacement);
+                        std::cout << ((inst.displacement < 0) ? "-#0x" : "+#0x") << std::abs(inst.displacement);
                     }
                     std::cout << "]";
                 }
                 else
                 {
-                    std::cout << " %" << rlang::alvm::Register::RegisterStr[(std::size_t)inst.reg1.type];
+                    std::cout << " %" << rlang::alvm::Register::RegisterStr[(std::size_t)inst.reg1];
                 }
 
-                if (inst.reg2.type != rlang::alvm::RegType::Nul)
+                if (inst.reg2 != rlang::alvm::RegType::NUL)
                 {
-                    if (inst.reg2.ptr)
+                    if (inst.reg2 & rlang::alvm::RegType::PTR)
                     {
                             std::cout << ", ";
                             switch (inst.size)
@@ -121,16 +131,16 @@ int main(int argc, const char* argv[])
                                     std::cout << "qword";
                                     break;
                             }
-                            std::cout << " [%" << rlang::alvm::Register::RegisterStr[(std::size_t)inst.reg2.type];
-                            if (inst.reg2.displacement != 0)
+                            std::cout << " [%" << rlang::alvm::Register::RegisterStr[(std::size_t)(inst.reg2 & rlang::alvm::RegType::DPTR)];
+                            if (inst.displacement != 0)
                             {
-                                std::cout << ((inst.reg2.displacement < 0) ? "-#0x" : "+#0x") << std::abs(inst.reg2.displacement);
+                                std::cout << ((inst.displacement < 0) ? "-#0x" : "+#0x") << std::abs(inst.displacement);
                             }
                             std::cout << "]";
                     }
                     else
                     {
-                        std::cout << ", %" << rlang::alvm::Register::RegisterStr[(std::size_t)inst.reg2.type];
+                        std::cout << ", %" << rlang::alvm::Register::RegisterStr[(std::size_t)inst.reg2];
                     }
                 }
                 else
@@ -148,10 +158,10 @@ int main(int argc, const char* argv[])
     }
 
     std::cout << std::endl;
-    rlang::alvm::ALVM r(compiler_result.dataSection);
+    rlang::alvm::ALVM r(assembler_result.dataSection);
     std::int32_t result = 0;
-    r.Run(compiled_code, result); // mr synctactical shugar
+    r.Run(assembled_code, result); // mr synctactical shugar
     std::cout << "Exited with code: " << result << std::endl;
-
+    */
     return 0;
 }

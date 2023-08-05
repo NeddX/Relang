@@ -6,7 +6,7 @@
 #include "Register.h"
 
 namespace rlang::alvm {
-    enum class OpCode : std::uint8_t
+    enum OpCode : std::uint8_t
     {
         End,
         Push,
@@ -23,6 +23,7 @@ namespace rlang::alvm {
         PStr,
         Cmp,
         Mov,
+        Lea,
         Enter,
         Call,
         Return,
@@ -70,10 +71,12 @@ namespace rlang::alvm {
 
     struct Instruction
     {
+        // 1 + 8 + 1 + 1 + 2 + 1 = 14
         OpCode opcode = OpCode::Nop;
         std::uint64_t imm64 = 0;
-        Register reg1 = { RegType::Nul, false };
-        Register reg2 = { RegType::Nul, false };
+        RegType reg1 = RegType::NUL;
+        RegType reg2 = RegType::NUL;
+        std::int16_t displacement = 0;
         std::int8_t size = 64;
 
     public:
@@ -94,6 +97,7 @@ namespace rlang::alvm {
             "pstr",
             "cmp",
             "mov",
+            "lea",
             "enter",
             "call",
             "ret",
@@ -135,6 +139,8 @@ namespace rlang::alvm {
             "nop"
         };
     };
+
+    using InstructionList = std::vector<Instruction>;
 }
 
 #endif // ALVM_INSTRUCTION_H

@@ -4,11 +4,12 @@
 #include <sdafx.h>
 
 #include "Register.h"
-#include "ByteBuffer.h"
 #include "Instruction.h"
 
 namespace rlang::alvm {
 	constexpr int STACK_SIZE = 1024 * 1024 * 2;
+	constexpr std::uint8_t DATA_SECTION_INDIC = 0xFD;
+	constexpr std::uint8_t CODE_SECTION_INDIC = 0xFC;
 
 	class ALVM
 	{
@@ -37,6 +38,7 @@ namespace rlang::alvm {
 			&ALVM::PrintStr,
             &ALVM::Compare,
 			&ALVM::Move,
+			&ALVM::Lea,
 			&ALVM::Enter,
 			&ALVM::Call,
 			&ALVM::Return,
@@ -86,7 +88,7 @@ namespace rlang::alvm {
 		ALVM(const std::vector<std::uint8_t>& data);
 
 	public:
-		void Run(const std::vector<Instruction>& code, std::int32_t& result);
+		void Run(const std::vector<Instruction>& code, std::int64_t& result);
 
 	private:
 		void End();
@@ -104,6 +106,7 @@ namespace rlang::alvm {
 		void PrintStr();
         void Compare();
 		void Move();
+		void Lea();
 		void Enter();
 		void Call();
 		void Return();

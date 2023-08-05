@@ -1,5 +1,5 @@
-#ifndef ALVM_ALA_COMPILER_H
-#define ALVM_ALA_COMPILER_H
+#ifndef ALVM_ASSEMBLER_H
+#define ALVM_ASSEMBLER_H
 
 #include <unordered_map>
 #include <cstdint>
@@ -27,25 +27,41 @@ namespace rlang::rmc {
 		DataType type = DataType::Undefined;
 	};
 
-	enum CompilerStatus
-	{
-	Ok,
-	Error
-	};
+    enum AssemblerStatus
+    {
+        Ok,
+		AssembleError,
+		WriteError,
+		ReadError
+    };
 
-	struct CompilerResult
+    struct AssemblerResult
 	{
-		std::vector<alvm::Instruction> compiledCode;
+		alvm::InstructionList assembledCode;
 		std::vector<std::uint8_t> dataSection;
-		CompilerStatus status;
+		AssemblerStatus status;
 	};
 
-	struct Compiler
+	enum class OutputType
+	{
+	Lib,
+	DLib,
+	XBin
+};
+
+	struct AssemblerOptions
+	{
+		OutputType type;
+		const TokenList& tokens;
+		const std::string& path;
+	};
+
+	struct Assembler
 	{
 	private:
 		static std::unordered_map<std::string, DataInfo> m_DataNameTable;
 		static std::unordered_map<std::string, std::pair<std::size_t, std::unordered_map<std::string, std::size_t>>> m_LabelAddressMap;
-		static std::vector<alvm::Instruction> m_CompiledCode;
+		static std::vector<alvm::Instruction> m_AssembledCode;
 		static std::vector<alvm::Instruction> m_InstEpilogue;
 		static std::vector<std::uint8_t> m_DataSection;
 		static std::string m_CurrentSection;
@@ -55,14 +71,16 @@ namespace rlang::rmc {
 	private:
 		static void Preproccess(const TokenList& tokens);
 		static void Cleanup();
+		static AssemblerStatus WriteToBinary(const std::string& path);
 
 	public:
-		static CompilerResult Compile(const TokenList& tokens);
-		
+		static AssemblerResult Assemble(const AssemblerOptions& opt);
+
 	private:
+		static AssemblerStatus CodeGen(const TokenList& tokens);
 		static alvm::OpCode GetInst(std::string inst);
 		static alvm::RegType GetReg(std::string reg);
 	};
 }
 
-#endif // ALVM_ALA_COMPILER_H
+#endif // ALVM_ASSEMBLER_H

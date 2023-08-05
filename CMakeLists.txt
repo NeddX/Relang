@@ -18,5 +18,5 @@ set(CMAKE_BUILD_TYPE Debug)
 set(VENDOR_DIR "${CMAKE_SOURCE_DIR}/vendor/")
 
 add_subdirectory("ALVM")
-add_subdirectory("ALA")
-add_subdirectory("Test")
+add_subdirectory("ALASM")
+#add_subdirectory("Test")

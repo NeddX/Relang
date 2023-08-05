@@ -6,22 +6,33 @@ echo "Build started."
 export CC=$(which clang)
 export CXX=$(which clang++)
 
+platform="linux"
+cpwd=$pwd
+
 if [ ! -d "builds" ]; then
     echo "Configuring CMake..."
 	mkdir -p "builds"
-	mkdir -p "builds/linux"
-	cd "builds/linux"
+	mkdir -p "builds/$platform"
+	cd "builds/$platform"
 	cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug ../../
-elif [ ! -d "builds/linux" ]; then
+elif [ ! -d "builds/$platform" ]; then
 	echo "Configuring CMake.."
-    mkdir -p "builds/linux"
-	cd "builds/linux"
+    mkdir -p "builds/$platform"
+	cd "builds/$platform"
 	cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug ../../
 else
-	cd "builds/linux"
+	cd "builds/$platform"
 fi
 
 echo "Building..."
 cmake --build ./
 cp "compile_commands.json" ../../
+
+if [ ! -d "../../bin" ]; then
+	mkdir -p "../../bin"
+fi
+
+cp "ALVM/ALVM" ../../bin/alvm
+cp "ALASM/ALASM" ../../bin/alasm
+
 echo "Build finished."
