@@ -27,7 +27,7 @@ Command format: ```alvm [file]```
 Execute the bytecode.
 
 # Plans
-- Wrote few terminal games in ALVM bytecode.
+- Write a few simple terminal games in ALVM bytecode.
 - Write a very basic C compiler that compiles to ALVM bytecode.
 - Compile ALVM bytecode to machine code by first generating x86 AT&T assembly and then compiling it with GCC to machine.
-- Create a scripting language that compiled to ALVM bytecode.
+- Create a scripting language that compiles to ALVM bytecode.
