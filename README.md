@@ -1,5 +1,5 @@
 # ALVM
-Basic 64bit registers based partial ISA virtual machine written in C++20.
+Basic 64bit register-based partial ISA virtual machine written in C++20.
 The ISA is almost identical to that of x86.
 Has 16 64bit wide general purpose registers.
 Ships with a basic assembler that is inspired by bpth NASM and MASM.
