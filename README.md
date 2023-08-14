@@ -1,5 +1,5 @@
 # ALVM
-Baisc partial ISA virtual machine written in C++20.
+Basic partial ISA virtual machine written in C++20.
 The ISA is almost identical to that of x86 and the syntax is a mix of AT&T, Intel. The assembler directives are also inspired by MASM and NASM.
 
 # Build
@@ -24,7 +24,7 @@ Options:
 
 ## ALVM
 Command format: ```alvm [file]```
-Executed the binary bytecode.
+Execute the bytecode.
 
 # Plans
 - Wrote few terminal games in ALVM bytecode.
