@@ -5,6 +5,7 @@
 
 #include "Register.h"
 #include "Instruction.h"
+#include "Utils.h"
 
 namespace rlang::alvm {
 	constexpr int STACK_SIZE = 1024 * 1024 * 2;
@@ -81,6 +82,7 @@ namespace rlang::alvm {
 			&ALVM::BitwiseXOR,
 			&ALVM::BitwiseTEST,
 
+			&ALVM::SetConioMode,
 			&ALVM::Debug_DumpFlags,
 			&ALVM::Nop
 	};
@@ -142,6 +144,8 @@ namespace rlang::alvm {
 		void BitwiseNOT();
 		void BitwiseXOR();
 		void BitwiseTEST();
+
+		void SetConioMode();
 		void Debug_DumpFlags();
 		void Nop();
 	};

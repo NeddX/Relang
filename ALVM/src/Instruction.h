@@ -65,6 +65,7 @@ namespace rlang::alvm {
         XOR,
         TEST,
 
+        SConio,
         DumpFlags,
         Nop
     };
@@ -77,6 +78,7 @@ namespace rlang::alvm {
         RegType reg1 = RegType::NUL;
         RegType reg2 = RegType::NUL;
         std::int16_t displacement = 0;
+        RegType reg_displacmenet = RegType::NUL;
         std::int8_t size = 64;
 
     public:
@@ -113,7 +115,7 @@ namespace rlang::alvm {
             "system",
             "syscall",
             "invokec",
-            "getch",
+            "getchar",
             "jmp",
             "jz",
             "jnz",
@@ -135,6 +137,9 @@ namespace rlang::alvm {
             "not",
             "xor",
             "test",
+
+            // Temporary instructions
+            "sconio",
             "_dbg_dumpflags",
             "nop"
         };

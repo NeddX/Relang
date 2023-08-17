@@ -172,6 +172,7 @@ namespace rlang::rmc {
         if (res.status == AssemblerStatus::Ok)
         {
             res.assembledCode = m_AssembledCode;
+            res.dataSection = m_DataSection;
             switch (opt.type)
             {
                 case OutputType::Lib:
@@ -284,9 +285,9 @@ byte_def_case:
                                                                 {
                                                                     CODEGEN_ERROR(tokens[i], "Expected a ')'.");
                                                                 }
-                                                                std::size_t size = std::stoul(tokens[i - 1].text);
+                                                                std::size_t size = std::stoul(tokens[i - 1].text) - 1;
                                                                 std::uint8_t data =
-                                                                    *((std::uint8_t*)m_DataSection.data() + inf.size);
+                                                                    *((std::uint8_t*)m_DataSection.data() + inf.size - 1);
                                                                 m_DataSection.resize(inf.size + size);
                                                                 for (auto x = 0; x < size; ++x)
                                                                     *((std::uint8_t*)m_DataSection.data() + inf.size + x) = data;
@@ -364,7 +365,7 @@ word_def_case:
                                                                 {
                                                                     CODEGEN_ERROR(tokens[i], "Expected a ')'.");
                                                                 }
-                                                                std::size_t size = std::stoul(tokens[i - 1].text);
+                                                                std::size_t size = std::stoul(tokens[i - 1].text) - 1;
                                                                 std::uint16_t data =
                                                                     *((std::uint16_t*)(std::uintptr_t)(m_DataSection.data() + inf.size - 2));
                                                                 m_DataSection.resize(inf.size + size * 2);
@@ -445,7 +446,7 @@ dword_def_case:
                                                                 {
                                                                     CODEGEN_ERROR(tokens[i], "Expected a ')'.");
                                                                 }
-                                                                std::size_t size = std::stoul(tokens[i - 1].text);
+                                                                std::size_t size = std::stoul(tokens[i - 1].text) - 1;
                                                                 std::uint32_t data =
                                                                     *((std::uint32_t*)(std::uintptr_t)(m_DataSection.data() + inf.size - 4));
                                                                 m_DataSection.resize(inf.size + size * 4);
@@ -527,7 +528,7 @@ qword_def_case:
                                                                 {
                                                                     CODEGEN_ERROR(tokens[i], "Expected a ')'.");
                                                                 }
-                                                                std::size_t size = std::stoul(tokens[i - 1].text);
+                                                                std::size_t size = std::stoul(tokens[i - 1].text) - 1;
                                                                 std::uint64_t data =
                                                                     *((std::uint64_t*)(std::uintptr_t)(m_DataSection.data() + inf.size - 8));
                                                                 m_DataSection.resize(inf.size + size * 8);
@@ -654,6 +655,7 @@ qword_def_case:
                                 case alvm::OpCode::Dec:
                                 case alvm::OpCode::Malloc:
                                 case alvm::OpCode::Free:
+                                case alvm::OpCode::SConio:
                                     // Instructions that accept both no operands or a single operand.
                                     switch (current_instruction.opcode)
                                     {
@@ -750,19 +752,58 @@ ok_instruction_case:
                     }
                     else if (tokens[i].text == "+")
                     {
-                        if (tokens[i + 1].type != TokenType::Number)
+                        if (tokens[i + 1].type != TokenType::Number &&
+                            tokens[i + 1].type != TokenType::Identifier &&
+                            tokens[i + 1].type != TokenType::Operator)
                         {
-                            CODEGEN_ERROR(tokens[i + 1], "Expected a number literal after " << tokens[i].text << ".");
                         }
-                        else if (ptr)
+                        if (ptr)
                         {
-                            if (operand_count <= 0)
+                            if (tokens[i + 1].type == TokenType::Identifier)
+                            {
+                                auto it = m_DataNameTable.find(tokens[i + 1].text);
+                                if (it)
+                                {
+                                    if (it->second.constant)
+                                    {
+                                        current_instruction.displacement = (std::int32_t)it->second.value;
+                                    }
+                                    else
+                                    {
+                                        COMPILE_ERROR(tokens[i + 1], "Only named number literals are allowed.");
+                                    }
+                                }
+                                else
+                                {
+                                    COMPILE_ERROR(tokens[i + 1], "Unknown Identifier " << tokens[i + 1].text);
+                                }
+                            }
+                            else if (tokens[++i].type == TokenType::Operator)
+                            {
+                                if (tokens[i + 1].type == TokenType::Identifier)
+                                {
+                                    auto reg = GetReg(tokens[i + 1].text);
+                                    if (reg != RegType::NULL)
+                                    {
+
+                                    }
+                                    else
+                                    {
+                                        COMPILE_ERROR(tokens[i + 1], "Register with such name does not exist.");
+                                    }
+                                }
+                                else
+                                {
+                                    COMPILE_ERROR(tokens[i + 1], "Expected an identifier after % operator.");
+                                }
+                            }
+                            else if (tokens[i + 1].type == TokenType::Number)
                             {
                                 current_instruction.displacement = (std::int32_t)std::stoul(tokens[i + 1].text);
                             }
                             else
                             {
-                                current_instruction.displacement = (std::int32_t)std::stoul(tokens[i + 1].text);
+                                CODEGEN_ERROR(tokens[i + 1], "Expected a number literal, named number literal or a register after " << tokens[i].text << " operator.");
                             }
                             i++;
                         }
@@ -982,6 +1023,24 @@ ok_instruction_case:
                     {
                         current_instruction.size = 64;
                     }
+                    else if (tokens[i].text == "typeof")
+                    {
+                        if (tokens[i + 1].type == TokenType::Operator && tokens[i + 1].text == "(")
+                        {
+                            if (tokens[++i + 1].type != TokenType::Identifier)
+                            {
+                                CODEGEN_ERROR(tokens[i + 1], "typeof operator takes an identifier as an argument.");
+                            }
+
+                            auto it = m_DataNameTable.find(tokens[++i].text);
+                            if (it == m_DataNameTable.end())
+                            {
+                                CODEGEN_ERROR(tokens[i], "'" << tokens[i].text << "' doesn't exist in the current context.");
+                            }
+
+                            current_instruction.imm64 = SizeOfDataTypeB(it->second.type);
+                        }
+                    }
                     else if (tokens[i].text == "sizeof")
                     {
                         if (tokens[i + 1].type == TokenType::Operator && tokens[i + 1].text == "(")
@@ -1055,9 +1114,7 @@ ok_instruction_case:
                                 {
                                     if (it->second.constant)
                                     {
-                                        CODEGEN_ERROR(tokens[i], "Instruction doesn't accept an immediate value as an operand.\n"
-                                                      << "LOAD Instruction encoding:\n"
-                                                      << "\top1: [m] op2: [r]");
+                                        CODEGEN_ERROR(tokens[i], "Instruction doesn't accept an immediate value as an operand.");
                                     }
                                     else
                                     {
@@ -1065,13 +1122,13 @@ ok_instruction_case:
                                         {
                                             current_instruction.reg1 = (alvm::RegType)((alvm::RegType)(alvm::RegType::DS | 0x80));
                                             current_instruction.displacement = (std::int64_t)it->second.addr;
-                                            current_instruction.size = SizeOfDataType(it->second.type);
+                                            //current_instruction.size = SizeOfDataType(it->second.type);
                                         }
                                         else if (operand_count > 0)
                                         {
                                             current_instruction.reg2 = (alvm::RegType)(alvm::RegType::DS | 0x80);
                                             current_instruction.displacement = (std::int64_t)it->second.addr;
-                                            current_instruction.size = SizeOfDataType(it->second.type);
+                                            //current_instruction.size = SizeOfDataType(it->second.type);
                                         }
                                     }
                                 }
@@ -1091,29 +1148,30 @@ ok_instruction_case:
                                     }
                                     else
                                     {
-                                        std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): Constant '"
-                                                  << tokens[i].text << " is not a string literal.\n'"
+                                        std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): Variable "
+                                                  << tokens[i].text << " is not a string literal.\n"
                                                   << alvm::Instruction::InstructionStr[(std::size_t)current_instruction.opcode]
-                                                  << "' Instruction Operand Encoding:\n"
+                                                  << " Instruction Operand Encoding:\n"
                                                   << "\top1: [r, m, imm8/16/32] op2: [N/A]\n";
                                         std::exit(-1);
                                     }
                                 }
                                 else
                                 {
-                                    std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): Instruction '"
+                                    std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): Instruction "
                                               << alvm::Instruction::InstructionStr[(std::size_t)current_instruction.opcode]
-                                              << "' is a unary instruction.\n'"
+                                              << " is a unary instruction.\n"
                                               << alvm::Instruction::InstructionStr[(std::size_t)current_instruction.opcode]
-                                              << "' Instruction Operand Encoding:\n"
+                                              << " Instruction Operand Encoding:\n"
                                               << "\top1: [r, m, imm8/16/32] op2: [N/A]\n";
                                     std::exit(-1);
                                 }
                                 break;
                             case alvm::OpCode::Mov:
+                            case alvm::OpCode::Cmp:
                                 if (it->second.type != DataType::Undefined)
                                 {
-                                    if (it->second.constant)
+                                    if (it->second.constant && operand_count > 0)
                                     {
                                         current_instruction.imm64 = it->second.value;
                                     }
@@ -1144,7 +1202,7 @@ ok_instruction_case:
                                         {
                                             current_instruction.reg2 = (alvm::RegType)(alvm::RegType::DS | 0x80);
                                             current_instruction.displacement = (std::int64_t)it->second.addr;
-                                            current_instruction.size = SizeOfDataType(it->second.type);
+                                            //current_instruction.size = SizeOfDataType(it->second.type);
                                         }
                                         else
                                         {
@@ -1172,7 +1230,7 @@ ok_instruction_case:
                                         {
                                             current_instruction.reg1 = (alvm::RegType)(alvm::RegType::DS | 0x80);
                                             current_instruction.displacement = (std::int64_t)it->second.addr;
-                                            current_instruction.size = SizeOfDataType(it->second.type);
+                                            //current_instruction.size = SizeOfDataType(it->second.type);
                                         }
                                         else
                                         {
@@ -1210,9 +1268,9 @@ ok_instruction_case:
                                 }
                                 else
                                 {
-                                    std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): Instruction '"
+                                    std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): Instruction "
                                               << alvm::Instruction::InstructionStr[(std::size_t)current_instruction.opcode]
-                                              << "' is a unary instruction.\n"
+                                              << " is a unary instruction.\n"
                                               << utils::string::ToUpperCopy(alvm::Instruction::InstructionStr[(std::size_t)current_instruction.opcode])
                                               << " Instruction Operand Encoding:\n"
                                               << "\top1: [r, m, imm8/16/32] op2: [N/A]\n";
@@ -1232,7 +1290,7 @@ ok_instruction_case:
                                         {
                                             current_instruction.reg1 = (alvm::RegType)(alvm::RegType::DS | 0x80);
                                             current_instruction.displacement = (std::int64_t)it->second.addr;
-                                            current_instruction.size = SizeOfDataType(it->second.type);
+                                            //current_instruction.size = SizeOfDataType(it->second.type);
                                         }
                                     }
                                     else

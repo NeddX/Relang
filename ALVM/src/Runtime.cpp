@@ -1,23 +1,6 @@
 #include "Runtime.h"
 #include "Instruction.h"
 
-/*#define TriggerFlags(op1, op2, res, bitsize, optype)					\
-    m_Registers[RegType::ZF] = res == 0;								\
-    m_Registers[RegType::CF] = (optype) ? res < op1 || res < op2 : res > op1 || res > op2; \
-    m_Registers[RegType::SF] = (res >> bitsize - 1) & 1;				\
-    m_Registers[RegType::PF] = [](std::uint8_t num) -> std::uint8_t		\
-    {                                                               \
-        auto n = 0;                                                 \
-        while (num)                                                 \
-        {                                                           \
-            n += num & 1;                                           \
-            num >>= 1;                                              \
-        }                                                           \
-        return n;                                                   \
-	} (res & 0xff) % 2 == 0;
-
-*/
-
 #define ResetFlags()							\
 	m_Registers[RegType::SFR] = 0
 
@@ -48,11 +31,26 @@
 #define ResetSFR()								\
 	m_Registers[RegType::SFR] = 0x0
 
-#define TriggerFlags(op1, op2, res, bitsize, optype)	\
-	if (res == 0) SetZF(); else ResetZF();									\
-	if ((res >> sizeof(bitsize) - 1) & 1) SetSF(); else ResetSF();	\
-	if ((optype) ? res < op1 || res < op2 : res > op1 || res > op2) SetCF(); else ResetCF(); \
-	if ((optype) ? (bitsize)res < (bitsize)op1 || (bitsize)res < (bitsize)op2 : (bitsize)res > (bitsize)op1 || (bitsize)res > (bitsize)op2) SetCF(); else ResetCF() \
+		/*m_Registers[RegType::PF] = [](std::uint8_t num) -> std::uint8_t	\
+		{                                                                   \
+			auto n = 0;                                                     \
+			while (num)                                                     \
+			{                                                               \
+				n += num & 1;                                               \
+				num >>= 1;                                                  \
+			}                                                               \
+			return n;                                                       \
+		} (res & 0xff) % 2 == 0;*/
+#define TriggerFlags(op1, op2, res, type, optype)	                                                                  \
+    do                                                                                                                \
+    { 														                                                          \
+        const type msb = 1ull << (sizeof(type) * 8 - 1);                                                              \
+        if (res == 0) SetZF(); else ResetZF();                                                                         \
+        if (res & msb) SetSF(); else ResetSF();                                                                       \
+        if ((optype) ? res < op1 || res < op2 : res > op1 || res > op2) SetCF(); else ResetCF();                      \
+        if ((optype) ? ((op1 ^ res) & (op2 ^ res) & msb) : ((op1 ^ res) & (op2 ^ res) & msb)) SetOF(); else ResetOF(); \
+    } while (0)
+
 
 #define Push8(u8)								\
 	m_Sp--;										\
@@ -381,38 +379,20 @@ namespace rlang::alvm {
 
 	void ALVM::Mul()
 	{
-
-		std::uint64_t op1 = m_Registers[RegType::R0], op2;
-		if (m_Pc->reg1 & 0x80)
-		{
-			// r0, m
-			op2 = ReadFrom64(m_Registers[m_Pc->reg1]);
-		}
-		else
-		{
-			// r0, r
-			op2 = m_Registers[m_Pc->reg1];
-		}
-		m_Registers[RegType::R0] = op1 * op2;
+		// r0, r
+		std::uint64_t op1 = m_Registers[RegType::R0], op2 = m_Registers[m_Pc->reg1], res = op1 * op2;
+		m_Registers[RegType::R0] = res;
+		TriggerFlags(op1, op2, res, std::int32_t, 1);
 		m_Pc++;
 	}
 
 	void ALVM::Div()
 	{
-		std::uint64_t op1 = m_Registers[RegType::R0], op2;
-		if (m_Pc->reg1 & 0x80)
-		{
-			// r0, m
-			op2 = ReadFrom64(m_Registers[m_Pc->reg1]);
-		}
-		else
-		{
-			// r0, r
-			op2 = m_Registers[m_Pc->reg1];
-		}
-
-		m_Registers[RegType::R0] = op1 / op2;
+		// r0, r
+		std::uint64_t op1 = m_Registers[RegType::R0], op2 = m_Registers[m_Pc->reg1], res = op1 / op2;
+		m_Registers[RegType::R0] = res;
 		m_Registers[RegType::R3] = op1 % op2;
+		TriggerFlags(op1, op2, res, std::int32_t, 0);
 		m_Pc++;
 	}
 
@@ -424,92 +404,19 @@ namespace rlang::alvm {
 
 	void ALVM::Increment()
 	{
-		if (m_Pc->reg1 & 0x80)
-		{
-			// m
-			switch (m_Pc->size)
-			{
-				case 8:
-				{
-					std::uint8_t op1 = ReadFrom(m_Registers[m_Pc->reg1]), res = ++op1;
-					TriggerFlags(op1, 1, res, std::int8_t, 1);
-					WriteAt(m_Registers[m_Pc->reg1], res);
-					break;
-				}
-				case 16:
-				{
-					std::uint16_t op1 = ReadFrom16(m_Registers[m_Pc->reg1]), res = ++op1;
-					TriggerFlags(op1, 1, res, std::int16_t, 1);
-					WriteAt16(m_Registers[m_Pc->reg1], res);
-					break;
-				}
-				case 32:
-				{
-					std::uint32_t op1 = ReadFrom32(m_Registers[m_Pc->reg1]), res = ++op1;
-					TriggerFlags(op1, 1, res, std::int32_t, 1);
-					WriteAt32(m_Registers[m_Pc->reg1], res);
-					break;
-				}
-				default:
-				case 64:
-				{
-					std::uint64_t op1 = ReadFrom64(m_Registers[m_Pc->reg1]), res = ++op1;
-					TriggerFlags(op1, 1, res, std::int64_t, 1);
-					WriteAt64(m_Registers[m_Pc->reg1], res);
-				}
-			}
-		}
-		else
-		{
-			// r
-			std::uint64_t op1 = m_Registers[m_Pc->reg1], res = ++op1;
-			TriggerFlags(op1, 1, res, std::int64_t, 1);
-			m_Registers[m_Pc->reg1] = res;
-		}
+		// r
+		std::uint64_t op1 = m_Registers[m_Pc->reg1], res = ++op1;
+		TriggerFlags(op1, 1, res, std::int64_t, 1);
+		m_Registers[m_Pc->reg1] = res;
 		m_Pc++;
 	}
 
 	void ALVM::Decrement()
 	{
-		if (m_Pc->reg1 & 0x80)
-		{
-			// m
-			switch (m_Pc->size)
-			{
-				case 8:
-				{
-					std::uint8_t op1 = ReadFrom(m_Registers[m_Pc->reg1]), res = --op1;
-					TriggerFlags(op1, 1, res, std::int8_t, 0);
-					break;
-				}
-				case 16:
-				{
-					std::uint16_t op1 = ReadFrom16(m_Registers[m_Pc->reg1]), res = --op1;
-					TriggerFlags(op1, 1, res, std::int16_t, 0);
-					break;
-				}
-				case 32:
-				{
-					std::uint32_t op1 = ReadFrom32(m_Registers[m_Pc->reg1]), res = --op1;
-					TriggerFlags(op1, 1, res, std::int32_t, 0);
-					break;
-				}
-				default:
-				case 64:
-				{
-					std::uint64_t op1 = ReadFrom64(m_Registers[m_Pc->reg1]), res = --op1;
-					TriggerFlags(op1, 1, res, std::int64_t, 0);
-					break;
-				}
-			}
-		}
-		else
-		{
-			// r
-			std::uint64_t op1 = m_Registers[m_Pc->reg1], res = --op1;
-			TriggerFlags(op1, 1, res, std::int64_t, 0);
-			m_Registers[m_Pc->reg1] = res;
-		}
+		// r
+		std::uint64_t op1 = m_Registers[m_Pc->reg1], res = --op1;
+		TriggerFlags(op1, 1, res, std::int64_t, 0);
+		m_Registers[m_Pc->reg1] = res;
 		m_Pc++;
 	}
 
@@ -519,7 +426,7 @@ namespace rlang::alvm {
 		// fstr_ptr, args_ptr
 		std::size_t total_size = 0;
 		std::size_t last_occurence = 0;
-		const std::size_t size = std::strlen((const char*)m_Registers[RegDeref(m_Pc->reg1)] + m_Pc->displacement);
+		const std::size_t size = std::strlen((const char*)m_Registers[RegDeref(m_Pc->reg1)] + m_Pc->displacement) + 1;
 		const unsigned char* format_str = (const unsigned char*)m_Registers[RegDeref(m_Pc->reg1)] + m_Pc->displacement;
 
 		for (auto i = 0; i < size; ++i)
@@ -575,6 +482,10 @@ namespace rlang::alvm {
 					else if (std::strcmp(f, "%s") == 0)
 					{
 						std::printf("%s", (const char*)m_Registers[RegDeref(m_Pc->reg2)] + total_size);
+					}
+					else if (std::strcmp(f, "%c") == 0)
+					{
+						std::printf("%c", *((const char*)m_Registers[RegDeref(m_Pc->reg2)] + total_size));
 					}
 					else
 					{
@@ -894,7 +805,7 @@ namespace rlang::alvm {
 
 	void ALVM::System()
 	{
-		auto status = std::system((const char*)m_Registers[m_Pc->reg1] + m_Pc->displacement);
+		auto status = std::system((const char*)m_Registers[RegDeref(m_Pc->reg1)] + m_Pc->displacement);
 		m_Registers[RegType::R4] = status;
 		m_Pc++;
 	}
@@ -1080,6 +991,19 @@ namespace rlang::alvm {
 		ResetCF();
 		if (m_Registers[m_Pc->reg1] == 0) SetZF(); else ResetZF();
 		if ((m_Registers[m_Pc->reg1] >> 64 - 1) & 1) SetSF(); else ResetSF();
+		m_Pc++;
+	}
+
+	void ALVM::SetConioMode()
+	{
+		if (m_Pc->imm64)
+		{
+			utils::gterm::set_conio_terminal_mode();
+		}
+		else
+		{
+			utils::gterm::reset_terminal_mode();
+		}
 		m_Pc++;
 	}
 

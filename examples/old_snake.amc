@@ -1,0 +1,129 @@
+.section data:
+	const		WIDTH				#10
+	const		HEIGHT				#10
+	const		ASCII_ESC			#27
+	const		ASCII_SPACE			#30
+	const		ASCII_POUND			#35
+
+	byte		s_Wrld				#32, fill(#100), #0
+	byte		s_IntroText			"Snake v1.0 on ALVM\nPress ENTER to start.\n", #0	
+	byte		s_ClearCmd			"clear", #0	
+	byte		s_RenderFmt			"%s", #10, #0
+	byte		b_Run				#1	
+	byte		c_Char				#0
+
+	qword		q_PlayerPosX		#0
+	qword		q_PlayerPosY		#0
+
+.section code:
+	call @_main
+	
+	; Retrun code 0
+	mov %r0, #0
+	end
+
+@_main:
+	enter #0
+
+	push %r0
+	
+	; Init
+	pstr s_IntroText
+	sconio #1
+
+	; Game loop
+.l1:
+	call @update
+	call @render
+	call @get_input
+	load %r0, b_Run 
+	cmp %r0, #0
+	june .l1
+
+	pop %r0
+
+	leave
+	ret
+
+@draw_arena:
+	enter #24
+
+	push %r0
+	push %r1
+	push %r2
+
+	xor %r0, %r0
+
+.l1:
+	cmp %r0, HEIGHT
+	jue .l4
+	
+	; HEIGHT loop body
+	xor %r1, %r1
+	lea %r2, s_Wrld
+
+.l2:
+	cmp %r1, WIDTH
+	jue .l3
+	
+	; WIDTH loop body
+	add %r2, %r1
+	store byte [%r2], ASCII_POUND
+	
+	inc %r1
+	jmp .l2
+
+.l3:
+	inc %r0
+	jmp .l1
+
+.l4:
+	pop %r2
+	pop %r1
+	pop %r0
+
+	leave
+	ret
+
+@update:
+	enter #0
+
+	call @draw_arena	
+
+	leave
+	ret
+
+@get_input:
+	enter #16
+
+	push %r0
+	push %r1
+
+	getchar %r0
+	store c_Char, %r0
+	;lea %r1, c_Char
+	;printf s_Test, %r1
+	cmp %r0, ASCII_ESC
+	june .l1
+	store b_Run, #0
+
+.l1:
+	pop %r1
+	pop %r0
+
+	leave
+	ret
+
+@render:
+	enter #8
+
+	; Clear the screen
+	system s_ClearCmd
+	
+	push %r0
+
+	lea %r0, s_Wrld
+	printf s_RenderFmt, %r0
+
+	leave
+	ret

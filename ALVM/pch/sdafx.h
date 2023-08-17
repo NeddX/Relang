@@ -33,6 +33,8 @@
 #if defined(__APPLE__) || defined(__linux__)
 #include <unistd.h>
 #include <dlfcn.h>
+#include <sys/select.h>
+#include <termios.h>
 #else
 #ifdef _WIN32
 #define NOMINMAX
