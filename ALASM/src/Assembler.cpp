@@ -13,7 +13,7 @@
 
 DISABLE_ENUM_WARNING_BEGIN
 
-#define CODEGEN_ERROR(token, msg)                                       \
+#define ASSEMBLE_ERROR(token, msg)                                       \
     std::cerr << "Compile Error @ line (" << token.line << ", " << token.cur << "): " \
     << msg << "\n";                                                     \
     return AssemblerStatus::AssembleError
@@ -53,26 +53,26 @@ static constexpr inline std::uint8_t SizeOfDataType(rlang::rmc::DataType type)
 }
 
 namespace rlang::rmc {
-    std::unordered_map<std::string, DataInfo> Assembler::m_DataNameTable;
+    std::unordered_map<std::string, DataInfo> Assembler::m_SymbolTable;
     std::unordered_map<std::string, std::pair<std::size_t, std::unordered_map<std::string, std::size_t>>> Assembler::m_LabelAddressMap;
     std::vector<alvm::Instruction> Assembler::m_AssembledCode;
     std::vector<alvm::Instruction> Assembler::m_InstEpilogue;
     std::vector<std::uint8_t> Assembler::m_DataSection;
-    std::size_t Assembler::m_StackSize = 0;
-    std::size_t Assembler::m_DataCount = 0;
+    std::size_t Assembler::m_BssSize = 0;
     std::string Assembler::m_CurrentSection = "";
 
     void Assembler::Cleanup()
     {
         m_AssembledCode.clear();
         m_InstEpilogue.clear();
-        m_DataNameTable.clear();
+        m_SymbolTable.clear();
         m_LabelAddressMap.clear();
         m_DataSection.clear();
         m_CurrentSection = "";
+        m_BssSize = 0;
     }
 
-    void Assembler::Preproccess(const TokenList& tokens)
+    void Assembler::LabelProcessor(const TokenList& tokens)
     {
         // Pre proccess the source code.
         std::size_t inst_count = 0;
@@ -150,6 +150,11 @@ namespace rlang::rmc {
             fs.write((const char*)&data_section_size, sizeof(std::size_t));
             fs.write((const char*)m_DataSection.data(), data_section_size);
 
+            indic = alvm::BSS_SECTION_INDIC;
+
+            fs.write((const char*)&indic, sizeof(std::uint8_t));
+            fs.write((const char*)&m_BssSize, sizeof(std::size_t));
+
             indic = alvm::CODE_SECTION_INDIC;
 
             fs.write((const char*)&indic, sizeof(std::uint8_t));
@@ -190,11 +195,11 @@ namespace rlang::rmc {
     AssemblerStatus Assembler::CodeGen(const TokenList& tokens)
     {
         Cleanup();
-        Preproccess(tokens);
+        LabelProcessor(tokens);
 
         std::string current_label;
         int operand_count = -1;
-        alvm::RegType ptr = alvm::RegType::R0;
+        alvm::RegType ptr = alvm::RegType::NUL;
         std::size_t inst_token_id = 0;
         alvm::Instruction current_instruction;
         for (auto i = 0; i < tokens.size(); ++i)
@@ -213,18 +218,18 @@ namespace rlang::rmc {
                             {
                                 if (tokens[i + 1].type == TokenType::Identifier)
                                 {
-                                    if (m_DataNameTable.find(tokens[i + 1].text) != m_DataNameTable.end())
+                                    if (m_SymbolTable.find(tokens[i + 1].text) != m_SymbolTable.end())
                                     {
-                                        CODEGEN_ERROR(tokens[i + 1],
+                                        ASSEMBLE_ERROR(tokens[i + 1],
                                                       "Attempted to redefine '" << tokens[i + 1].text << "'.");
                                     }
 
-                                    // tokens[i + 2] should be the first element
                                     DataInfo inf =
                                     {
                                         .addr = m_DataSection.size(),
                                         .size = 0,
                                         .value = (std::uint64_t)m_DataSection.size(),
+                                        .initialized = true,
                                     };
 
                                     i += 2;
@@ -233,10 +238,10 @@ namespace rlang::rmc {
                                     {
                                         inf.type = DataType::Byte;
 
-                                        if (tokens[i].type != TokenType::Number &&
+                                        if (tokens[i].type != TokenType::Immediate &&
                                             tokens[i].type != TokenType::StringLiteral)
                                         {
-                                            CODEGEN_ERROR(tokens[i],
+                                            ASSEMBLE_ERROR(tokens[i],
                                                           "Expected a NumberLiteral or a StringLiteral but got "
                                                           << Token::TokenStr[(std::size_t)tokens[i].type] << " instead.");
                                         }
@@ -249,7 +254,7 @@ namespace rlang::rmc {
                                                     m_DataSection.insert(m_DataSection.end(), tokens[i].text.begin(), tokens[i].text.end());
                                                     inf.size += tokens[i].text.size();
                                                         break;
-                                                case TokenType::Number:
+                                                case TokenType::Immediate:
                                                     m_DataSection.resize(m_DataSection.size() + 1);
                                                     *(std::uint8_t*)(m_DataSection.data() + inf.addr + inf.size) = (std::uint8_t)std::stoul(tokens[i].text);
                                                     inf.size++;
@@ -267,7 +272,7 @@ namespace rlang::rmc {
                                                     else
                                                     {
                                                         // compile error: bad operator
-                                                        CODEGEN_ERROR(tokens[i], "Expected a comma (,) but got a " << tokens[i].text << " instead.");
+                                                        ASSEMBLE_ERROR(tokens[i], "Expected a comma (,) but got a " << tokens[i].text << " instead.");
                                                     }
                                                     break;
                                                 default:
@@ -278,12 +283,12 @@ byte_def_case:
                                                         if (tokens[i].type == TokenType::Operator &&
                                                             tokens[i++].text == "(")
                                                         {
-                                                            if (tokens[i].type == TokenType::Number)
+                                                            if (tokens[i].type == TokenType::Immediate)
                                                             {
                                                                 if (tokens[++i].type != TokenType::Operator &&
                                                                     tokens[i].text != ")")
                                                                 {
-                                                                    CODEGEN_ERROR(tokens[i], "Expected a ')'.");
+                                                                    ASSEMBLE_ERROR(tokens[i], "Expected a ')'.");
                                                                 }
                                                                 std::size_t size = std::stoul(tokens[i - 1].text) - 1;
                                                                 std::uint8_t data =
@@ -295,14 +300,14 @@ byte_def_case:
                                                             }
                                                             else
                                                             {
-                                                                CODEGEN_ERROR(tokens[i - 1], "fill function takes in a NumberLiteral as an argument.");
+                                                                ASSEMBLE_ERROR(tokens[i - 1], "fill function takes in a NumberLiteral as an argument.");
                                                             }
                                                         }
                                                     }
                                                     else
                                                     {
                                                         run = false;
-                                                        m_DataNameTable[tokens[inst_token_id + 1].text] = inf;
+                                                        m_SymbolTable[tokens[inst_token_id + 1].text] = inf;
                                                     }
                                                     break;
                                             }
@@ -314,10 +319,10 @@ byte_def_case:
                                     {
                                         inf.type = DataType::Word;
 
-                                        if (tokens[i].type != TokenType::Number &&
+                                        if (tokens[i].type != TokenType::Immediate &&
                                             tokens[i].type != TokenType::StringLiteral)
                                         {
-                                            CODEGEN_ERROR(tokens[i],
+                                            ASSEMBLE_ERROR(tokens[i],
                                                           "Expected a NumberLiteral or a StringLiteral but got "
                                                           << Token::TokenStr[(std::size_t)tokens[i].type] << " instead.");
                                         }
@@ -327,9 +332,9 @@ byte_def_case:
                                             switch (tokens[i].type)
                                             {
                                                 case TokenType::StringLiteral:
-                                                    CODEGEN_ERROR(tokens[i], "Wide characters are not yet supported.");
+                                                    ASSEMBLE_ERROR(tokens[i], "Wide characters are not yet supported.");
                                                     break;
-                                                case TokenType::Number:
+                                                case TokenType::Immediate:
                                                     m_DataSection.resize(m_DataSection.size() + 2);
                                                     *(std::uint16_t*)(m_DataSection.data() + inf.addr + inf.size) = (std::uint16_t)std::stoul(tokens[i].text);
                                                     inf.size += 2;
@@ -347,7 +352,7 @@ byte_def_case:
                                                     else
                                                     {
                                                         // compile error: bad operator
-                                                        CODEGEN_ERROR(tokens[i], "Expected a comma (,) but got a " << tokens[i].text << " instead.");
+                                                        ASSEMBLE_ERROR(tokens[i], "Expected a comma (,) but got a " << tokens[i].text << " instead.");
                                                     }
                                                     break;
                                                 default:
@@ -358,12 +363,12 @@ word_def_case:
                                                         if (tokens[i].type == TokenType::Operator &&
                                                             tokens[i++].text == "(")
                                                         {
-                                                            if (tokens[i].type == TokenType::Number)
+                                                            if (tokens[i].type == TokenType::Immediate)
                                                             {
                                                                 if (tokens[++i].type != TokenType::Operator &&
                                                                     tokens[i].text != ")")
                                                                 {
-                                                                    CODEGEN_ERROR(tokens[i], "Expected a ')'.");
+                                                                    ASSEMBLE_ERROR(tokens[i], "Expected a ')'.");
                                                                 }
                                                                 std::size_t size = std::stoul(tokens[i - 1].text) - 1;
                                                                 std::uint16_t data =
@@ -377,14 +382,14 @@ word_def_case:
                                                                 inf.size += size * 2;                                                            }
                                                             else
                                                             {
-                                                                CODEGEN_ERROR(tokens[i - 1], "fill function takes in a NumberLiteral as an argument.");
+                                                                ASSEMBLE_ERROR(tokens[i - 1], "fill function takes in a NumberLiteral as an argument.");
                                                             }
                                                         }
                                                     }
                                                     else
                                                     {
                                                         run = false;
-                                                        m_DataNameTable[tokens[inst_token_id + 1].text] = inf;
+                                                        m_SymbolTable[tokens[inst_token_id + 1].text] = inf;
                                                     }
                                                     break;
                                             }
@@ -396,9 +401,9 @@ word_def_case:
                                     {
                                         inf.type = DataType::DWord;
 
-                                        if (tokens[i].type != TokenType::Number)
+                                        if (tokens[i].type != TokenType::Immediate)
                                         {
-                                            CODEGEN_ERROR(tokens[i],
+                                            ASSEMBLE_ERROR(tokens[i],
                                                           "Expected a NumberLiteral but got "
                                                           << Token::TokenStr[(std::size_t)tokens[i].type] << " instead.");
                                         }
@@ -408,9 +413,9 @@ word_def_case:
                                             switch (tokens[i].type)
                                             {
                                                 case TokenType::StringLiteral:
-                                                    CODEGEN_ERROR(tokens[i], "Expected a NumberLiteral but got a StringLiteral instead.");
+                                                    ASSEMBLE_ERROR(tokens[i], "Expected a NumberLiteral but got a StringLiteral instead.");
                                                     break;
-                                                case TokenType::Number:
+                                                case TokenType::Immediate:
                                                     m_DataSection.resize(m_DataSection.size() + 4);
                                                     *(std::uint32_t*)(m_DataSection.data() + inf.addr + inf.size) = (std::uint32_t)std::stoul(tokens[i].text);
                                                     inf.size += 4;
@@ -428,7 +433,7 @@ word_def_case:
                                                     else
                                                     {
                                                         // compile error: bad operator
-                                                        CODEGEN_ERROR(tokens[i], "Expected a comma (,) but got a " << tokens[i].text << " instead.");
+                                                        ASSEMBLE_ERROR(tokens[i], "Expected a comma (,) but got a " << tokens[i].text << " instead.");
                                                     }
                                                     break;
                                                 default:
@@ -439,12 +444,12 @@ dword_def_case:
                                                         if (tokens[i].type == TokenType::Operator &&
                                                             tokens[i++].text == "(")
                                                         {
-                                                            if (tokens[i].type == TokenType::Number)
+                                                            if (tokens[i].type == TokenType::Immediate)
                                                             {
                                                                 if (tokens[++i].type != TokenType::Operator &&
                                                                     tokens[i].text != ")")
                                                                 {
-                                                                    CODEGEN_ERROR(tokens[i], "Expected a ')'.");
+                                                                    ASSEMBLE_ERROR(tokens[i], "Expected a ')'.");
                                                                 }
                                                                 std::size_t size = std::stoul(tokens[i - 1].text) - 1;
                                                                 std::uint32_t data =
@@ -458,14 +463,14 @@ dword_def_case:
                                                                 inf.size += size * 4;                                                            }
                                                             else
                                                             {
-                                                                CODEGEN_ERROR(tokens[i - 1], "fill function takes in a NumberLiteral as an argument.");
+                                                                ASSEMBLE_ERROR(tokens[i - 1], "fill function takes in a NumberLiteral as an argument.");
                                                             }
                                                         }
                                                     }
                                                     else
                                                     {
                                                         run = false;
-                                                        m_DataNameTable[tokens[inst_token_id + 1].text] = inf;
+                                                        m_SymbolTable[tokens[inst_token_id + 1].text] = inf;
                                                     }
                                                     break;
                                             }
@@ -477,9 +482,9 @@ dword_def_case:
                                     {
                                         inf.type = DataType::QWord;
 
-                                        if (tokens[i].type != TokenType::Number)
+                                        if (tokens[i].type != TokenType::Immediate)
                                         {
-                                            CODEGEN_ERROR(tokens[i],
+                                            ASSEMBLE_ERROR(tokens[i],
                                                           "Expected a NumberLiteral but got "
                                                           << Token::TokenStr[(std::size_t)tokens[i].type] << " instead.");
                                         }
@@ -492,7 +497,7 @@ dword_def_case:
                                                     m_DataSection.insert(m_DataSection.end(), tokens[i].text.begin(), tokens[i].text.end());
                                                     inf.size += tokens[i].text.size();
                                                     break;
-                                                case TokenType::Number:
+                                                case TokenType::Immediate:
                                                     m_DataSection.resize(m_DataSection.size() + 8);
                                                     *(std::uint64_t*)(m_DataSection.data() + inf.addr + inf.size) = std::stoul(tokens[i].text);
                                                     inf.size += 8;
@@ -510,7 +515,7 @@ dword_def_case:
                                                     else
                                                     {
                                                         // compile error: bad operator
-                                                        CODEGEN_ERROR(tokens[i], "Expected a comma (,) but got a " << tokens[i].text << " instead.");
+                                                        ASSEMBLE_ERROR(tokens[i], "Expected a comma (,) but got a " << tokens[i].text << " instead.");
                                                     }
                                                     break;
                                                 default:
@@ -521,12 +526,12 @@ qword_def_case:
                                                         if (tokens[i].type == TokenType::Operator &&
                                                             tokens[i++].text == "(")
                                                         {
-                                                            if (tokens[i].type == TokenType::Number)
+                                                            if (tokens[i].type == TokenType::Immediate)
                                                             {
                                                                 if (tokens[++i].type != TokenType::Operator &&
                                                                     tokens[i].text != ")")
                                                                 {
-                                                                    CODEGEN_ERROR(tokens[i], "Expected a ')'.");
+                                                                    ASSEMBLE_ERROR(tokens[i], "Expected a ')'.");
                                                                 }
                                                                 std::size_t size = std::stoul(tokens[i - 1].text) - 1;
                                                                 std::uint64_t data =
@@ -540,14 +545,14 @@ qword_def_case:
                                                                 inf.size += size * 8;                                                            }
                                                             else
                                                             {
-                                                                CODEGEN_ERROR(tokens[i - 1], "fill function takes in a NumberLiteral as an argument.");
+                                                                ASSEMBLE_ERROR(tokens[i - 1], "fill function takes in a NumberLiteral as an argument.");
                                                             }
                                                         }
                                                     }
                                                     else
                                                     {
                                                         run = false;
-                                                        m_DataNameTable[tokens[inst_token_id + 1].text] = inf;
+                                                        m_SymbolTable[tokens[inst_token_id + 1].text] = inf;
                                                     }
                                                     break;
                                             }
@@ -558,27 +563,27 @@ qword_def_case:
                                 }
                                 else
                                 {
-                                    CODEGEN_ERROR(tokens[i], "Expected an Identifier after '" << tokens[i].text << "'.");
+                                    ASSEMBLE_ERROR(tokens[i], "Expected an Identifier after '" << tokens[i].text << "'.");
                                 }
                             }
                             else if (inst == "align")
                             {
-                                if (tokens[i + 1].type == TokenType::Number)
+                                if (tokens[i + 1].type == TokenType::Immediate)
                                 {
                                     m_DataSection.resize(m_DataSection.size() + std::stoul(tokens[i + 1].text));
                                 }
                                 else
                                 {
-                                    CODEGEN_ERROR(tokens[i + 2], "Expected a number literal after '" << tokens[i + 1].text << "'.");
+                                    ASSEMBLE_ERROR(tokens[i + 2], "Expected a number literal after '" << tokens[i + 1].text << "'.");
                                 }
                             }
                             else if (inst == "const")
                             {
                                 if (tokens[i + 1].type == TokenType::Identifier)
                                 {
-                                    if (tokens[i + 2].type == TokenType::Number)
+                                    if (tokens[i + 2].type == TokenType::Immediate)
                                     {
-                                        m_DataNameTable[tokens[i + 1].text] =
+                                        m_SymbolTable[tokens[i + 1].text] =
                                         {
                                             .size = 4,
                                             .value = std::stoul(tokens[i + 2].text),
@@ -588,22 +593,80 @@ qword_def_case:
                                     }
                                     else
                                     {
-                                        CODEGEN_ERROR(tokens[i + 2], "Expected an Integer after '" << tokens[i + 1].text << "'.");
+                                        ASSEMBLE_ERROR(tokens[i + 2], "Expected an Integer after '" << tokens[i + 1].text << "'.");
                                     }
                                 }
                                 else
                                 {
-                                   CODEGEN_ERROR(tokens[i], "Expected an Identifier after const declaration.");
+                                   ASSEMBLE_ERROR(tokens[i], "Expected an Identifier after const declaration.");
                                 }
                                 i += 2;
                             }
                             break;
                         }
+                        else if (m_CurrentSection == "bss")
+                        {
+                            // bssara
+                            std::string inst = utils::string::ToLowerCopy(tokens[i].text);
+                            inst_token_id = i;
+                            if (inst == "byte" || inst == "word" || inst == "dword" || inst == "qword")
+                            {
+                                if (tokens[i + 1].type == TokenType::Identifier)
+                                {
+                                   if (m_SymbolTable.find(tokens[i + 1].text) != m_SymbolTable.end())
+                                   {
+                                        ASSEMBLE_ERROR(tokens[i + 1], "Attempted to redefine '" << tokens[i + 1].text << "'.");
+                                   }
+
+                                   DataInfo inf =
+                                   {
+                                        .addr = m_DataSection.size() + m_BssSize,
+                                        .size = 0,
+                                        .value = 0,
+                                        .initialized = false,
+                                   };
+
+                                   i += 2;
+                                   if (tokens[i].type != TokenType::Displacement &&
+                                       tokens[i].type != TokenType::Immediate)
+                                   {
+                                        ASSEMBLE_ERROR(tokens[i], "Expected a number.");
+                                   }
+
+                                   if (inst == "byte")
+                                   {
+                                        inf.type = DataType::Byte;
+                                   }
+                                   else if (inst == "word")
+                                   {
+                                        inf.type = DataType::Word;
+                                   }
+                                   else if (inst == "dword")
+                                   {
+                                        inf.type = DataType::DWord;
+                                   }
+                                   else if (inst == "qword")
+                                   {
+                                        inf.type = DataType::QWord;
+                                   }
+                                   inf.size = SizeOfDataTypeB(inf.type);
+                                   m_BssSize += std::stoul(tokens[i].text) * inf.size;
+                                   m_SymbolTable[tokens[inst_token_id + 1].text] = inf;
+                                   break;
+                                }
+                                else
+                                {
+                                   ASSEMBLE_ERROR(tokens[i + 1], "Expected an identifier.");
+                                }
+                            }
+                        }
                     }
+                    /* What? what is this for???
                     else if (m_CurrentSection != "code")
                     {
-                        CODEGEN_ERROR(tokens[i], "No section defined.");
+                        ASSEMBLE_ERROR(tokens[i], "No section defined.");
                     }
+                    */
 
                     if (i > 0)
                     {
@@ -621,7 +684,7 @@ qword_def_case:
                                 case alvm::OpCode::DumpFlags:
                                     if (operand_count > -1)
                                     {
-                                        CODEGEN_ERROR(tokens[inst_token_id], "Instruction doesn't accept any operands.");
+                                        ASSEMBLE_ERROR(tokens[inst_token_id], "Instruction doesn't accept any operands.");
                                     }
                                     break;
                                 // Instructions that accept a single operand.
@@ -666,11 +729,11 @@ qword_def_case:
 
                                     if (operand_count > 0)
                                     {
-                                        CODEGEN_ERROR(tokens[inst_token_id], "Instruction is unary.");
+                                        ASSEMBLE_ERROR(tokens[inst_token_id], "Instruction is unary.");
                                     }
                                     else if (operand_count == -1)
                                     {
-                                        CODEGEN_ERROR(tokens[inst_token_id], "Instruction accepts a single operand but no operands were passed. Refer to its encoding for correct usage.");
+                                        ASSEMBLE_ERROR(tokens[inst_token_id], "Instruction accepts a single operand but no operands were passed. Refer to its encoding for correct usage.");
                                     }
                                     break;
                                 // Instructions that acceot three operands.
@@ -687,7 +750,7 @@ qword_def_case:
 
                                     if (operand_count <= 0 || operand_count > 1)
                                     {
-                                        CODEGEN_ERROR(tokens[inst_token_id], "Invalid number of operands passed to Instruction.\nRefer to its encoding for correct usage.");
+                                        ASSEMBLE_ERROR(tokens[inst_token_id], "Invalid number of operands passed to Instruction.\nRefer to its encoding for correct usage.");
                                     }
                                     break;
                             }
@@ -701,14 +764,59 @@ ok_instruction_case:
                         }
                     }
                     inst_token_id = i;
-                    current_instruction = alvm::Instruction();
+                    current_instruction = alvm::Instruction {  };
                     operand_count = -1;
-                    //bit_size = current_instruction.size;
+                    ptr = alvm::RegType::NUL;
 
-                    current_instruction.opcode = GetInst(tokens[i].text);
+                    current_instruction.opcode = GetInst(tokens[i].text.substr(0, tokens[i].text.length() - 1));
                     if (current_instruction.opcode == alvm::OpCode::Nop && utils::string::ToLowerCopy(tokens[i].text) != "nop")
                     {
-                        CODEGEN_ERROR(tokens[i], "Unknown Instruction " << tokens[i].text << ".");
+                        current_instruction.opcode = GetInst(tokens[i].text);
+                        current_instruction.size = 64;
+                        if (current_instruction.opcode == alvm::OpCode::Nop && utils::string::ToLowerCopy(tokens[i].text) != "nop")
+                        {
+                            ASSEMBLE_ERROR(tokens[i], "Unknown Instruction " << tokens[i].text << ".");
+                        }
+                        break;
+                    }
+
+                    switch (tokens[i].text[tokens[i].text.length() - 1])
+                    {
+                        case 'B':
+                        case 'b':
+                            current_instruction.size = 8;
+                            break;
+                        case 'W':
+                        case 'w':
+                            current_instruction.size = 16;
+                            break;
+                        case 'L':
+                        case 'l':
+                            current_instruction.size = 32;
+                            break;
+                        case 'Q':
+                        case 'q':
+                            current_instruction.size = 64;
+                            break;
+                    }
+                    break;
+                }
+                case TokenType::Displacement:
+                {
+                    if (tokens[i + 1].type != TokenType::Operator && tokens[i + 1].text != "(")
+                    {
+                        ASSEMBLE_ERROR(tokens[i], "Bad displacement.");
+                    }
+
+                    if (ptr != alvm::RegType::NUL)
+                    {
+                        // Scaler...
+                    }
+                    else
+                    {
+                        // Displacer...
+                        ptr = alvm::RegType::PTR;
+                        current_instruction.displacement = (std::int32_t)std::stoul(tokens[i].text);
                     }
                     break;
                 }
@@ -719,125 +827,87 @@ ok_instruction_case:
                         alvm::RegType reg = GetReg(tokens[i + 1].text);
                         if (reg != alvm::RegType::NUL)
                         {
-                            if (current_instruction.reg1 == alvm::RegType::NUL)
+                            if (current_instruction.sreg == alvm::RegType::NUL)
                             {
-                                current_instruction.reg1 = reg;
-                                current_instruction.reg1 = (alvm::RegType)(current_instruction.reg1 | ptr);
+                                current_instruction.sreg = reg;
+                                if (ptr != alvm::RegType::NUL)
+                                    current_instruction.sreg = (alvm::RegType)(current_instruction.sreg | ptr);
                             }
                             else
                             {
-                                current_instruction.reg2 = reg;
-                                current_instruction.reg2 = (alvm::RegType)(current_instruction.reg2 | ptr);
+                                current_instruction.dreg = reg;
+                                if (ptr != alvm::RegType::NUL)
+                                    current_instruction.dreg = (alvm::RegType)(current_instruction.dreg | ptr);
                             }
                             i++;
                         }
                         else
                         {
-                            CODEGEN_ERROR(tokens[i + 1], "Undefined Identifier '" << tokens[i + 1].text << "'.");
+                            ASSEMBLE_ERROR(tokens[i + 1], "Undefined Identifier '" << tokens[i + 1].text << "'.");
                         }
                         if (operand_count <= -1) operand_count++;
                     }
-                    else if (tokens[i].text == "[")
+                    else if (tokens[i].text == "(")
                     {
+                        if (operand_count <= -1) operand_count++;
+
+                        i++;
                         ptr = alvm::RegType::PTR;
+                        auto base_reg = GetReg(tokens[++i].text);
+                        if (base_reg == alvm::RegType::NUL)
+                        {
+                            ASSEMBLE_ERROR(tokens[i], "Expected a register.");
+                        }
+
+                        base_reg = (alvm::RegType)(base_reg | alvm::RegType::PTR);
+                        if (operand_count <= 0)
+                        {
+                            current_instruction.sreg = base_reg;
+                        }
+                        else
+                        {
+                            current_instruction.dreg = base_reg;
+                        }
+
+                        int sub_op_counter = 1;
+                        while (tokens[++i].text == "," && tokens[i].type == TokenType::Operator)
+                        {
+                            if (sub_op_counter == 1)
+                            {
+                                // Source register disp(base, source, scaler)
+                                i++;
+                                auto src_reg = GetReg(tokens[++i].text);
+                                if (src_reg != alvm::RegType::NUL)
+                                {
+                                    current_instruction.src_reg = src_reg;
+                                }
+                                else
+                                {
+                                    ASSEMBLE_ERROR(tokens[i], "Expected a register.");
+                                }
+                            }
+                            else if (sub_op_counter == 2)
+                            {
+                                // Scaler disp(base, source, scaler)
+                                // TODO: CONTINUE
+                            }
+                            sub_op_counter++;
+
+                        }
+                        if (tokens[i].text != ")" && tokens[i++].type != TokenType::Operator)
+                        {
+                            ASSEMBLE_ERROR(tokens[i], "Expected a ).");
+                        }
                     }
-                    else if (tokens[i].text == "]")
+                    else if (tokens[i].text == ")")
                     {
-                        ptr = alvm::RegType::R0;
+                        ptr = alvm::RegType::NUL;
                     }
                     else if (tokens[i].text == ",")
                     {
                         operand_count++;
-                        ptr = alvm::RegType::R0;
-                    }
-                    else if (tokens[i].text == "+")
-                    {
-                        if (tokens[i + 1].type != TokenType::Number &&
-                            tokens[i + 1].type != TokenType::Identifier &&
-                            tokens[i + 1].type != TokenType::Operator)
-                        {
-                        }
-                        if (ptr)
-                        {
-                            if (tokens[i + 1].type == TokenType::Identifier)
-                            {
-                                auto it = m_DataNameTable.find(tokens[i + 1].text);
-                                if (it)
-                                {
-                                    if (it->second.constant)
-                                    {
-                                        current_instruction.displacement = (std::int32_t)it->second.value;
-                                    }
-                                    else
-                                    {
-                                        COMPILE_ERROR(tokens[i + 1], "Only named number literals are allowed.");
-                                    }
-                                }
-                                else
-                                {
-                                    COMPILE_ERROR(tokens[i + 1], "Unknown Identifier " << tokens[i + 1].text);
-                                }
-                            }
-                            else if (tokens[++i].type == TokenType::Operator)
-                            {
-                                if (tokens[i + 1].type == TokenType::Identifier)
-                                {
-                                    auto reg = GetReg(tokens[i + 1].text);
-                                    if (reg != RegType::NULL)
-                                    {
+                        ptr = alvm::RegType::NUL;
 
-                                    }
-                                    else
-                                    {
-                                        COMPILE_ERROR(tokens[i + 1], "Register with such name does not exist.");
-                                    }
-                                }
-                                else
-                                {
-                                    COMPILE_ERROR(tokens[i + 1], "Expected an identifier after % operator.");
-                                }
-                            }
-                            else if (tokens[i + 1].type == TokenType::Number)
-                            {
-                                current_instruction.displacement = (std::int32_t)std::stoul(tokens[i + 1].text);
-                            }
-                            else
-                            {
-                                CODEGEN_ERROR(tokens[i + 1], "Expected a number literal, named number literal or a register after " << tokens[i].text << " operator.");
-                            }
-                            i++;
-                        }
-                        else
-                        {
-                            CODEGEN_ERROR(tokens[i], "Single operation arithmetic expressions are only allowed inside Memory Access Brackets.");
-                        }
-                    }
-                    else if (tokens[i].text == "-")
-                    {
-                        if (tokens[i + 1].type != TokenType::Number)
-                        {
-                            CODEGEN_ERROR(tokens[i + 1], "Expected a number literal after " << tokens[i].text << ".");
-                        }
-                        else if (ptr)
-                        {
-                            if (operand_count == 0)
-                            {
-                                current_instruction.displacement = -(std::int32_t)std::stoul(tokens[i + 1].text);
-                            }
-                            else
-                            {
-                                current_instruction.displacement = -(std::int32_t)std::stoul(tokens[i + 1].text);
-                            }
-                            i++;
-                        }
-                        else
-                        {
-                            CODEGEN_ERROR(tokens[i], "Single operqation arithmetic expressionsa re only allowed inside Memory Access Brackets.");
-                        }
-                    }
-                    else if (tokens[i].text == "*")
-                    {
-                        CODEGEN_ERROR(tokens[i], "Scaling not yet supported.");
                     }
                     else if (tokens[i].text == "@")
                     {
@@ -869,7 +939,7 @@ ok_instruction_case:
                                     case alvm::OpCode::June:
                                         break;
                                     default:
-                                        CODEGEN_ERROR(tokens[i], "Instruction doesn't accept a label as an operand.");
+                                        ASSEMBLE_ERROR(tokens[i], "Instruction doesn't accept a label as an operand.");
                                         break;
                                 }
                                 current_instruction.imm64 = (std::uint64_t)m_LabelAddressMap[tokens[i + 1].text].first;
@@ -878,7 +948,7 @@ ok_instruction_case:
                             {
                                 std::cout << "Compiler Error @ line (" << tokens[i + 1].line << ", " << tokens[i + 1].cur << "): "
                                           << "Attempted to reference an undefined label '" << tokens[i + 1].text << "'.\n";
-                                std::exit(-1);
+                                return AssemblerStatus::AssembleError;
                             }
                             i++;
                         }
@@ -899,17 +969,26 @@ ok_instruction_case:
                         {
 
                             // Section definition
-                            if (tokens[i + 2].text == "data" || tokens[i + 2].text == "code")
+                            if (tokens[i + 2].text == "data")
                             {
-                                m_CurrentSection = tokens[i + 2].text;
-                                i += 3;
+                                if (m_CurrentSection == "bss")
+                                {
+                                    ASSEMBLE_ERROR(tokens[i + 2], "data section must be defined before bss section.");
+                                }
                             }
-                            else
+                            else if (tokens[i + 2].text == "bss")
                             {
-                                std::cerr << "Compile Error @ line (" << tokens[i + 2].line << ", " << tokens[i + 2].cur
-                                          << "): Unknown section '" << tokens[i + 2].text << "'.\n";
-                                std::exit(-1);
+                                if (m_CurrentSection == "code")
+                                {
+                                    ASSEMBLE_ERROR(tokens[i + 2], "bss section must be defined before code section.");
+                                }
                             }
+                            else if (tokens[i + 2].text != "code")
+                            {
+                                ASSEMBLE_ERROR(tokens[i + 2], "Unknown section " << tokens[i + 2].text << ".");
+                            }
+                            m_CurrentSection = tokens[i + 2].text;
+                            i += 3;
                         }
                         else if (tokens[i + 1].type == TokenType::Identifier)
                         {
@@ -929,11 +1008,11 @@ ok_instruction_case:
                                 {
                                     if (!current_label.empty())
                                     {
-                                        CODEGEN_ERROR(tokens[i], "Local label " << tokens[i + 1].text << " in parent label " << current_label << " is undefined.");
+                                        ASSEMBLE_ERROR(tokens[i], "Local label " << tokens[i + 1].text << " in parent label " << current_label << " is undefined.");
                                     }
                                     else
                                     {
-                                        CODEGEN_ERROR(tokens[i], "Attempted to reference a local label in an unexistent parent label.");
+                                        ASSEMBLE_ERROR(tokens[i], "Attempted to reference a local label in an unexistent parent label.");
                                     }
                                 }
                             }
@@ -945,7 +1024,7 @@ ok_instruction_case:
                             }
                             else
                             {
-                                CODEGEN_ERROR(tokens[i], "Whatever you're trying to do bud.");
+                                ASSEMBLE_ERROR(tokens[i], "Whatever you're trying to do bud.");
                             }
                         }
                     }
@@ -954,24 +1033,24 @@ ok_instruction_case:
                         std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): "
                                   << "Invalid operator '" << tokens[i].text << "' in instruction operand context."
                                   << std::endl;
-                        std::exit(-1);
+                        return AssemblerStatus::AssembleError;
                     }
                     break;
                 }
-                case TokenType::Number:
+                case TokenType::Immediate:
                 {
                     if (operand_count <= -1) operand_count++;
 
                     switch (current_instruction.opcode)
                     {
                         case alvm::OpCode::GetChar:
-                            CODEGEN_ERROR(tokens[inst_token_id], "Instruction doesn't accept a number literal as an operand."
+                            ASSEMBLE_ERROR(tokens[inst_token_id], "Instruction doesn't accept a number literal as an operand."
                                           << "\nRefer to its encoding for correct usage.");
                             break;
                         case alvm::OpCode::Load:
-                            if (operand_count > 0)
+                            if (operand_count == 0)
                             {
-                                CODEGEN_ERROR(tokens[inst_token_id], "Instruction doesn't accept a number literal as its second operand."
+                                ASSEMBLE_ERROR(tokens[inst_token_id], "Instruction doesn't accept a number literal as its source operand."
                                               << "\nRefer to its encoding for correct usage.");
                             }
                             break;
@@ -991,9 +1070,9 @@ ok_instruction_case:
                         case alvm::OpCode::OR:
                         case alvm::OpCode::NOT:
                         case alvm::OpCode::XOR:
-                            if (operand_count == 0)
+                            if (operand_count > 0)
                             {
-                                CODEGEN_ERROR(tokens[inst_token_id], "Instruction doesn't accept a number literal as its first operand."
+                                ASSEMBLE_ERROR(tokens[inst_token_id], "Instruction doesn't accept a number literal as its destination operand."
                                               << "\nRefer to its encoding for correct usage.");
                             }
                             break;
@@ -1006,36 +1085,19 @@ ok_instruction_case:
                 {
                     if (operand_count <= -1) operand_count++;
 
-                    // Check for keywords
-                    if (tokens[i].text == "byte")
-                    {
-                        current_instruction.size = 8;
-                    }
-                    else if (tokens[i].text == "word")
-                    {
-                        current_instruction.size = 16;
-                    }
-                    else if (tokens[i].text == "dword")
-                    {
-                        current_instruction.size = 32;
-                    }
-                    else if (tokens[i].text == "qword")
-                    {
-                        current_instruction.size = 64;
-                    }
-                    else if (tokens[i].text == "typeof")
+                    if (tokens[i].text == "typeof")
                     {
                         if (tokens[i + 1].type == TokenType::Operator && tokens[i + 1].text == "(")
                         {
                             if (tokens[++i + 1].type != TokenType::Identifier)
                             {
-                                CODEGEN_ERROR(tokens[i + 1], "typeof operator takes an identifier as an argument.");
+                                ASSEMBLE_ERROR(tokens[i + 1], "typeof operator takes an identifier as an argument.");
                             }
 
-                            auto it = m_DataNameTable.find(tokens[++i].text);
-                            if (it == m_DataNameTable.end())
+                            auto it = m_SymbolTable.find(tokens[++i].text);
+                            if (it == m_SymbolTable.end())
                             {
-                                CODEGEN_ERROR(tokens[i], "'" << tokens[i].text << "' doesn't exist in the current context.");
+                                ASSEMBLE_ERROR(tokens[i], "'" << tokens[i].text << "' doesn't exist in the current context.");
                             }
 
                             current_instruction.imm64 = SizeOfDataTypeB(it->second.type);
@@ -1047,13 +1109,13 @@ ok_instruction_case:
                         {
                             if (tokens[++i + 1].type != TokenType::Identifier)
                             {
-                                CODEGEN_ERROR(tokens[i + 1], "sizeof operator takes an identifier as an argument.");
+                                ASSEMBLE_ERROR(tokens[i + 1], "sizeof operator takes an identifier as an argument.");
                             }
 
-                            auto it = m_DataNameTable.find(tokens[++i].text);
-                            if (it == m_DataNameTable.end())
+                            auto it = m_SymbolTable.find(tokens[++i].text);
+                            if (it == m_SymbolTable.end())
                             {
-                                CODEGEN_ERROR(tokens[i], "'" << tokens[i].text << "' doesn't exist in the current context.");
+                                ASSEMBLE_ERROR(tokens[i], "'" << tokens[i].text << "' doesn't exist in the current context.");
                             }
 
                             current_instruction.imm64 = it->second.size;
@@ -1065,14 +1127,15 @@ ok_instruction_case:
                         {
                             if (tokens[++i + 1].type != TokenType::Identifier)
                             {
-                                CODEGEN_ERROR(tokens[i + 1], "lengthof operator takes an identifier as an argument.");
+                                ASSEMBLE_ERROR(tokens[i + 1], "lengthof operator takes an identifier as an argument.");
                             }
 
-                            auto it = m_DataNameTable.find(tokens[++i].text);
-                            if (it == m_DataNameTable.end())
+                            auto it = m_SymbolTable.find(tokens[++i].text);
+                            if (it == m_SymbolTable.end())
                             {
-                                CODEGEN_ERROR(tokens[i], "'" << tokens[i].text << "' doesn't exist in the current context.");
+                                ASSEMBLE_ERROR(tokens[i], "'" << tokens[i].text << "' doesn't exist in the current context.");
                             }
+
                             current_instruction.imm64 = it->second.size / SizeOfDataTypeB(it->second.type);
                         }
                     }
@@ -1082,49 +1145,39 @@ ok_instruction_case:
                         {
                             if (tokens[++i + 1].type != TokenType::Identifier)
                             {
-                                CODEGEN_ERROR(tokens[i + 1], "offsetof operator takes an identifier as an argument.");
+                                ASSEMBLE_ERROR(tokens[i + 1], "offsetof operator takes an identifier as an argument.");
                             }
 
-                            auto it = m_DataNameTable.find(tokens[++i].text);
-                            if (it == m_DataNameTable.end())
+                            auto it = m_SymbolTable.find(tokens[++i].text);
+                            if (it == m_SymbolTable.end())
                             {
-                                CODEGEN_ERROR(tokens[i], "'" << tokens[i].text << "' doesn't exist in the current context.");
+                                ASSEMBLE_ERROR(tokens[i], tokens[i].text << " doesn't exist in the current context.");
                             }
 
-                            if (operand_count == 0)
-                            {
-                                current_instruction.reg1 = alvm::RegType::DS;
-                                current_instruction.displacement = (std::int64_t)it->second.addr;
-                            }
-                            else if (operand_count == 1)
-                            {
-                                current_instruction.reg2 = alvm::RegType::DS;
-                                current_instruction.displacement = (std::int64_t)it->second.addr;
-                            }
-                            //current_instruction.imm64 = it->second.addr;
+                            current_instruction.imm64 = it->second.addr;
                         }
                     }
-                    else if (auto it = m_DataNameTable.find(tokens[i].text); it != m_DataNameTable.end())
+                    else if (auto it = m_SymbolTable.find(tokens[i].text); it != m_SymbolTable.end())
                     {
                         switch (current_instruction.opcode)
                         {
                             // Instructions that accept registers in their both operands
-                            default:
+                            /*default:
                                 if (it->second.type != DataType::Undefined)
                                 {
                                     if (it->second.constant)
                                     {
-                                        CODEGEN_ERROR(tokens[i], "Instruction doesn't accept an immediate value as an operand.");
+                                        ASSEMBLE_ERROR(tokens[i], "Instruction doesn't accept an immediate value as an operand.");
                                     }
                                     else
                                     {
-                                        if (operand_count == 0)
+                                        if (operand_count > 0)
                                         {
                                             current_instruction.reg1 = (alvm::RegType)((alvm::RegType)(alvm::RegType::DS | 0x80));
                                             current_instruction.displacement = (std::int64_t)it->second.addr;
                                             //current_instruction.size = SizeOfDataType(it->second.type);
                                         }
-                                        else if (operand_count > 0)
+                                        else if (operand_count == 0)
                                         {
                                             current_instruction.reg2 = (alvm::RegType)(alvm::RegType::DS | 0x80);
                                             current_instruction.displacement = (std::int64_t)it->second.addr;
@@ -1134,7 +1187,18 @@ ok_instruction_case:
                                 }
                                 else
                                 {
-                                    CODEGEN_ERROR(tokens[i], "Instruction expects one of the following types: BYTE, WORD, DWORD, QWORD");
+                                    ASSEMBLE_ERROR(tokens[i], "Instruction expects one of the following types: BYTE, WORD, DWORD, QWORD");
+                                }
+                                break;
+                            */
+                            default:
+                                if (it->second.constant)
+                                {
+                                    current_instruction.imm64 = it->second.value;
+                                }
+                                else
+                                {
+                                    ASSEMBLE_ERROR(tokens[i], "Instruction doesn't accept memory operands.");
                                 }
                                 break;
                             case alvm::OpCode::System:
@@ -1143,7 +1207,7 @@ ok_instruction_case:
                                 {
                                     if (it->second.type == DataType::Byte)
                                     {
-                                        current_instruction.reg1 = (alvm::RegType)(alvm::RegType::DS | 0x80);
+                                        current_instruction.sreg = (alvm::RegType)(alvm::RegType::DS | 0x80);
                                         current_instruction.displacement = (std::int64_t)it->second.addr;
                                     }
                                     else
@@ -1153,68 +1217,59 @@ ok_instruction_case:
                                                   << alvm::Instruction::InstructionStr[(std::size_t)current_instruction.opcode]
                                                   << " Instruction Operand Encoding:\n"
                                                   << "\top1: [r, m, imm8/16/32] op2: [N/A]\n";
-                                        std::exit(-1);
+                                        return AssemblerStatus::AssembleError;
                                     }
                                 }
                                 else
                                 {
-                                    std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): Instruction "
-                                              << alvm::Instruction::InstructionStr[(std::size_t)current_instruction.opcode]
-                                              << " is a unary instruction.\n"
-                                              << alvm::Instruction::InstructionStr[(std::size_t)current_instruction.opcode]
-                                              << " Instruction Operand Encoding:\n"
-                                              << "\top1: [r, m, imm8/16/32] op2: [N/A]\n";
-                                    std::exit(-1);
+                                    ASSEMBLE_ERROR(tokens[i], "Instruction is unary.");
                                 }
                                 break;
                             case alvm::OpCode::Mov:
                             case alvm::OpCode::Cmp:
+                            case alvm::OpCode::Sub:
+                            case alvm::OpCode::Add:
                                 if (it->second.type != DataType::Undefined)
                                 {
-                                    if (it->second.constant && operand_count > 0)
+                                    if (!it->second.constant)
                                     {
-                                        current_instruction.imm64 = it->second.value;
+                                        ASSEMBLE_ERROR(tokens[i], "Instruction doesn't accept memory operands.");
                                     }
-                                    else
+                                    else if (operand_count > 0)
                                     {
-                                        CODEGEN_ERROR(tokens[i], "Instruction doesn't accept memory operands.\n"
-                                                      << "MOV Instruction encdoing:\n"
-                                                      << "\top1: [r] op2: [r, imm64]");
+                                        ASSEMBLE_ERROR(tokens[i], "Instruction doesn't accept an immediate value as its destination operand.");
                                     }
+                                    current_instruction.imm64 = it->second.value;
                                 }
                                 else
                                 {
-                                    CODEGEN_ERROR(tokens[i], "Instruction expects one of the following types: BYTE, WORD, DWORD, QWORD");
+                                    ASSEMBLE_ERROR(tokens[i], "Instruction expects one of the following types: BYTE, WORD, DWORD, QWORD");
                                 }
                                 break;
                             case alvm::OpCode::Load:
+                            case alvm::OpCode::Lea:
                                 if (it->second.type != DataType::Undefined)
                                 {
                                     if (it->second.constant)
                                     {
-                                        CODEGEN_ERROR(tokens[i], "Instruction doesn't accept an immediate value as an operand.\n"
-                                                      << "LOAD Instruction encoding:\n"
-                                                      << "\top1: [m] op2: [r]");
+                                        ASSEMBLE_ERROR(tokens[i], "Instruction doesn't accept an immediate value as an operand.");
                                     }
                                     else
                                     {
-                                        if (operand_count > 0)
+                                        if (operand_count == 0)
                                         {
-                                            current_instruction.reg2 = (alvm::RegType)(alvm::RegType::DS | 0x80);
+                                            current_instruction.sreg = (alvm::RegType)(alvm::RegType::DS | 0x80);
                                             current_instruction.displacement = (std::int64_t)it->second.addr;
-                                            //current_instruction.size = SizeOfDataType(it->second.type);
                                         }
                                         else
                                         {
-                                            CODEGEN_ERROR(tokens[i], "Instruction doesn't accept a memory as the first operand.\n"
-                                                          << "LOAD Instruction encoding:\n"
-                                                          << "\top1: [m] op2: [r]");
+                                            ASSEMBLE_ERROR(tokens[i], "Instruction doesn't accept a memory operand as its destination.");
                                         }
                                     }
                                 }
                                 else
                                 {
-                                    CODEGEN_ERROR(tokens[i], "Instruction expects one of the following types: BYTE, WORD, DWORD, QWORD");
+                                    ASSEMBLE_ERROR(tokens[i], "Instruction expects one of the following types: BYTE, WORD, DWORD, QWORD");
                                 }
                                 break;
                             case alvm::OpCode::Store:
@@ -1222,27 +1277,28 @@ ok_instruction_case:
                                 {
                                     if (it->second.constant)
                                     {
+                                        if (operand_count >= 0)
+                                        {
+                                            ASSEMBLE_ERROR(tokens[i], "Instruction doesn't accept an immediate value as its destination operand.");
+                                        }
                                         current_instruction.imm64 = it->second.value;
                                     }
                                     else
                                     {
-                                        if (operand_count == 0)
+                                        if (operand_count >= 0)
                                         {
-                                            current_instruction.reg1 = (alvm::RegType)(alvm::RegType::DS | 0x80);
+                                            current_instruction.dreg = (alvm::RegType)(alvm::RegType::DS | 0x80);
                                             current_instruction.displacement = (std::int64_t)it->second.addr;
-                                            //current_instruction.size = SizeOfDataType(it->second.type);
                                         }
                                         else
                                         {
-                                            CODEGEN_ERROR(tokens[i], "Instruction doesn't accept a memory as the second operand.\n"
-                                                          << "STORE Instruction encoding:\n"
-                                                          << "\top1: [m] op2: [r, imm64]");
+                                            ASSEMBLE_ERROR(tokens[i], "Instruction doesn't accept a memory operand as its source.");
                                         }
                                     }
                                 }
                                 else
                                 {
-                                    CODEGEN_ERROR(tokens[i], "Instruction expects one of the following types: BYTE, WORD, DWORD, QWORD");
+                                    ASSEMBLE_ERROR(tokens[i], "Instruction expects one of the following types: BYTE, WORD, DWORD, QWORD");
                                 }
                                 break;
                             case alvm::OpCode::Enter:
@@ -1258,23 +1314,17 @@ ok_instruction_case:
                                         }
                                         else
                                         {
-                                            CODEGEN_ERROR(tokens[i], "Instruction expects an immediate value.");
+                                            ASSEMBLE_ERROR(tokens[i], "Instruction expects an immediate value.");
                                         }
                                     }
                                     else
                                     {
-                                        CODEGEN_ERROR(tokens[i], "Instruction expects one of the following types: BYTE, WORD, DWORD, QWORD");
+                                        ASSEMBLE_ERROR(tokens[i], "Instruction expects one of the following types: BYTE, WORD, DWORD, QWORD");
                                     }
                                 }
                                 else
                                 {
-                                    std::cerr << "Compile Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): Instruction "
-                                              << alvm::Instruction::InstructionStr[(std::size_t)current_instruction.opcode]
-                                              << " is a unary instruction.\n"
-                                              << utils::string::ToUpperCopy(alvm::Instruction::InstructionStr[(std::size_t)current_instruction.opcode])
-                                              << " Instruction Operand Encoding:\n"
-                                              << "\top1: [r, m, imm8/16/32] op2: [N/A]\n";
-                                    std::exit(-1);
+                                    ASSEMBLE_ERROR(tokens[i], "Instruction " << alvm::Instruction::InstructionStr[(std::size_t)current_instruction.opcode] << " is unary.");
                                 }
                                 break;
                             case alvm::OpCode::PInt:
@@ -1288,31 +1338,26 @@ ok_instruction_case:
                                         }
                                         else
                                         {
-                                            current_instruction.reg1 = (alvm::RegType)(alvm::RegType::DS | 0x80);
+                                            current_instruction.sreg = (alvm::RegType)(alvm::RegType::DS | 0x80);
                                             current_instruction.displacement = (std::int64_t)it->second.addr;
                                             //current_instruction.size = SizeOfDataType(it->second.type);
                                         }
                                     }
                                     else
                                     {
-                                        CODEGEN_ERROR(tokens[i], "Instruction expects one of the following types: BYTE, WORD, DWORD, QWORD");
+                                        ASSEMBLE_ERROR(tokens[i], "Instruction expects one of the following types: BYTE, WORD, DWORD, QWORD");
                                     }
                                 }
                                 else
                                 {
-                                    CODEGEN_ERROR(tokens[i], "Instruction "
-                                                  << alvm::Instruction::InstructionStr[(std::size_t)current_instruction.opcode]
-                                                  << " is a unary instruction.\n"
-                                                  << utils::string::ToUpperCopy(alvm::Instruction::InstructionStr[(std::size_t)current_instruction.opcode])
-                                                  << " Instruction Operand Encoding:\n"
-                                                  << "\top1: [r, m, imm8/16/32] op2: [N/A]\n");
+                                    ASSEMBLE_ERROR(tokens[i], "Instruction " << alvm::Instruction::InstructionStr[(std::size_t)current_instruction.opcode] << " is unary.");
                                 }
                                 break;
                         }
                     }
                     else
                     {
-                        CODEGEN_ERROR(tokens[i], "Undefined Identifier '" << tokens[i].text << "'.");
+                        ASSEMBLE_ERROR(tokens[i], "Undefined Identifier '" << tokens[i].text << "'.");
                     }
                     break;
                 }

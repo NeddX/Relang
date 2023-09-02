@@ -23,6 +23,22 @@ namespace rlang::alvm {
 		R13,
 		R14,
 		R15,
+		R16,
+		R17,
+		R18,
+		R19,
+		R20,
+		R21,
+		R22,
+		R23,
+		R24,
+		R25,
+		R26,
+		R27,
+		R28,
+		R29,
+		R30,
+		R31,
 
 		// Reserved
 		BP,
@@ -31,7 +47,7 @@ namespace rlang::alvm {
 		// Status Flags Register
 		SFR,
 
-		// Segement pointers
+		// Segement registers
 		CS,
 		SS,
 		DS,
@@ -40,12 +56,12 @@ namespace rlang::alvm {
 		GS,
 
 		// Special, Not real regisers
+		// No register
+		NUL,
 		// Indicates if a registers is a pointer
 		PTR = 0x80,
 		// Inverted PTR for dereferencing and recovering the original register using bitwise AND
-		DPTR = 0x7F,
-		// No register
-		NUL
+		DPTR = 0x7F
 	};
 
 	struct Register
@@ -73,6 +89,22 @@ namespace rlang::alvm {
 			"r13",
 			"r14",
 			"r15",
+			"r16",
+			"r17",
+			"r18",
+			"r19",
+			"r20",
+			"r21",
+			"r22",
+			"r23",
+			"r24",
+			"r25",
+			"r26",
+			"r27",
+			"r28",
+			"r29",
+			"r30",
+			"r31",
 
 			"bp",
 			"sp",
@@ -93,7 +125,7 @@ namespace rlang::alvm {
 	struct Registers
 	{
 	private:
-		std::array<std::uintptr_t, (std::size_t)RegType::NUL> m_Buffer = { 0 };
+		std::array<std::uintptr_t, (std::size_t)RegType::NUL + 1> m_Buffer = { 0 };
 
 	public:
 		inline std::uintptr_t& operator[](const std::size_t index) { return m_Buffer[index]; }

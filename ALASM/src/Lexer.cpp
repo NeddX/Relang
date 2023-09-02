@@ -19,7 +19,7 @@ namespace rlang::rmc {
             char c = src[i];
             switch (c)
             {
-                case '#': // Number
+                case '$': // Immediate value
                 {
                     if (current_token.type == TokenType::Comment || current_token.type == TokenType::StringLiteral)
                     {
@@ -27,9 +27,35 @@ namespace rlang::rmc {
                         break;
                     }
                     EndToken(current_token, tokens);
-                    current_token.type = TokenType::Number;
+                    current_token.type = TokenType::Immediate;
                     break;
                 }
+                case '0':
+                case '1':
+                case '2':
+                case '3':
+                case '4':
+                case '5':
+                case '6':
+                case '7':
+                case '8':
+                case '9':
+                    if (current_token.type == TokenType::Comment ||
+                        current_token.type == TokenType::StringLiteral ||
+                        current_token.type == TokenType::Displacement ||
+                        current_token.type == TokenType::Immediate ||
+                        current_token.type == TokenType::Identifier)
+                    {
+                        current_token.text.append(1, c);
+                        break;
+                    }
+                    else
+                    {
+                        EndToken(current_token, tokens);
+                        current_token.text.append(1, c);
+                        current_token.type = TokenType::Displacement;
+                    }
+                    break;
                 case '\\':
                 {
                     if (current_token.type == TokenType::StringLiteral)
@@ -125,6 +151,13 @@ namespace rlang::rmc {
                         current_token.text.append(1, c);
                         break;
                     }
+                    else if (src[i + 1] >= '0' && src[i + 1] <= '9')
+                    {
+                        EndToken(current_token, tokens);
+                        current_token.type = TokenType::Displacement;
+                        current_token.text.append(1, c);
+                        break;
+                    }
                     EndToken(current_token, tokens);
                     current_token.type = TokenType::Operator;
                     current_token.text.append(1, c);
@@ -170,7 +203,7 @@ namespace rlang::rmc {
         {
             switch (t.type)
             {
-                case TokenType::Number:
+                case TokenType::Immediate:
                 {
                     t.data = (std::int32_t)std::stoul(t.text);
                     break;

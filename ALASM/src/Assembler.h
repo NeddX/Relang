@@ -24,6 +24,7 @@ namespace rlang::rmc {
 		std::size_t size = 0;
 		std::uint64_t value = 0;
 		bool constant = false;
+		bool initialized = true;
 		DataType type = DataType::Undefined;
 	};
 
@@ -42,14 +43,14 @@ namespace rlang::rmc {
 		AssemblerStatus status;
 	};
 
-	enum class OutputType
-	{
-	Lib,
-	DLib,
-	XBin
-};
+    enum class OutputType
+    {
+        Lib,
+        DLib,
+        XBin
+    };
 
-	struct AssemblerOptions
+    struct AssemblerOptions
 	{
 		OutputType type;
 		const TokenList& tokens;
@@ -59,17 +60,16 @@ namespace rlang::rmc {
 	struct Assembler
 	{
 	private:
-		static std::unordered_map<std::string, DataInfo> m_DataNameTable;
+		static std::unordered_map<std::string, DataInfo> m_SymbolTable;
 		static std::unordered_map<std::string, std::pair<std::size_t, std::unordered_map<std::string, std::size_t>>> m_LabelAddressMap;
 		static std::vector<alvm::Instruction> m_AssembledCode;
 		static std::vector<alvm::Instruction> m_InstEpilogue;
 		static std::vector<std::uint8_t> m_DataSection;
+		static std::size_t m_BssSize;
 		static std::string m_CurrentSection;
-		static std::size_t m_StackSize;
-		static std::size_t m_DataCount;
 
 	private:
-		static void Preproccess(const TokenList& tokens);
+		static void LabelProcessor(const TokenList& tokens);
 		static void Cleanup();
 		static AssemblerStatus WriteToBinary(const std::string& path);
 

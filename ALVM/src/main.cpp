@@ -14,6 +14,7 @@ int main(const int argc, const char* argv[])
         {
             InstructionList code_section;
             std::vector<std::uint8_t> data_section;
+            std::size_t bss_size;
 
             fs.seekg(0, fs.end);
             std::size_t file_size = fs.tellg();
@@ -30,7 +31,11 @@ int main(const int argc, const char* argv[])
                         fs.read((char*)&size, sizeof(std::size_t));
                         data_section.resize(size / sizeof(std::uint8_t));
                         fs.read((char*)data_section.data(), size);
-                        ;
+                        break;
+                    }
+                    case BSS_SECTION_INDIC:
+                    {
+                        fs.read((char*)&bss_size, sizeof(std::size_t));
                         break;
                     }
                     case CODE_SECTION_INDIC:
@@ -42,7 +47,7 @@ int main(const int argc, const char* argv[])
                     }
                 }
 
-                ALVM vm(data_section);
+                ALVM vm(data_section, bss_size);
                 vm.Run(code_section, result);
             }
         }

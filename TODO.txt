@@ -1,0 +1,4 @@
+Switch to AT&T syntax.
+Add index register offsetting.
+Write a basic terminal game purely using ALVM assembly.
+Write a C Compiler that compiles to ALVM assembly in Rust.

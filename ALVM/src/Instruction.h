@@ -72,13 +72,13 @@ namespace rlang::alvm {
 
     struct Instruction
     {
-        // 1 + 8 + 1 + 1 + 2 + 1 = 14
+        // 1 + 8 + 1 + 1 + 4 + 1 + 1 = 17
         OpCode opcode = OpCode::Nop;
         std::uint64_t imm64 = 0;
-        RegType reg1 = RegType::NUL;
-        RegType reg2 = RegType::NUL;
-        std::int16_t displacement = 0;
-        RegType reg_displacmenet = RegType::NUL;
+        RegType sreg = RegType::NUL;
+        RegType dreg = RegType::NUL;
+        std::int32_t displacement = 0;
+        RegType src_reg = RegType::NUL;
         std::int8_t size = 64;
 
     public:
@@ -110,8 +110,8 @@ namespace rlang::alvm {
             "memcpy",
             "lrzf",
             "srzf",
-            "store",
-            "load",
+            "st",
+            "ld",
             "system",
             "syscall",
             "invokec",

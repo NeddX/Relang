@@ -13,12 +13,13 @@ namespace rlang::rmc {
         Whitespace,
         Comment,
         Identifier,
-        Number,
+        Immediate,
         Register,
         Instruction,
         BitSizeIndicator,
         Operator,
-        StringLiteral
+        StringLiteral,
+        Displacement
     };
 
     struct Token
@@ -40,7 +41,8 @@ namespace rlang::rmc {
             "Instruction",
             "BitSizeIndicator",
             "Operator",
-            "StringLiteral"
+            "StringLiteral",
+            "Displacement"
         };
 
     public:

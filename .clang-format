@@ -6,6 +6,6 @@ IndentWidth: 4
 KeepEmptyLinesAtTheStartOfBlocks: false
 PointerBindsToType: true
 SpacesBeforeTrailingComments: 1
-TabWidth: 8
+TabWidth: 4
 UseTab: Never
 IndentCaseLabels: true

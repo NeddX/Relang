@@ -11,6 +11,7 @@ namespace rlang::alvm {
 	constexpr int STACK_SIZE = 1024 * 1024 * 2;
 	constexpr std::uint8_t DATA_SECTION_INDIC = 0xFD;
 	constexpr std::uint8_t CODE_SECTION_INDIC = 0xFC;
+	constexpr std::uint8_t BSS_SECTION_INDIC = 0xFB;
 
 	class ALVM
 	{
@@ -22,6 +23,7 @@ namespace rlang::alvm {
 		std::vector<std::uint8_t> m_Stack;
 		Registers m_Registers;
 		std::uintptr_t& m_Sp;
+		std::size_t m_BssSize = 0;
 		const std::vector<InstructionHandler> m_Instructions =
 		{
 			&ALVM::End,
@@ -87,7 +89,7 @@ namespace rlang::alvm {
 			&ALVM::Nop
 	};
 	public:
-		ALVM(const std::vector<std::uint8_t>& data);
+		ALVM(const std::vector<std::uint8_t>& data, const std::size_t bssSize);
 
 	public:
 		void Run(const std::vector<Instruction>& code, std::int64_t& result);
