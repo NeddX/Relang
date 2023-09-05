@@ -345,7 +345,7 @@ namespace rlang::alvm {
 	void ALVM::Printf()
 	{
 		// m, m
-		// fstr_ptr, args_ptr
+		// sfmt_ptr, args_ptr
 		std::size_t total_size = 0;
 		std::size_t last_occurence = 0;
 		const std::size_t size = std::strlen((const char*)m_Registers[m_Pc->sreg] + m_Pc->displacement + m_Registers[m_Pc->src_reg]) + 1;
@@ -423,13 +423,13 @@ namespace rlang::alvm {
 					else
 					{
 						// Not a real format specifier so treat it just like a regular string
-						std::printf("%s", f);
+						std::puts(f);
 					}
 					i += riter - 1;
 					break;
 				}
 				default:
-					std::printf("%c", format_str[i]);
+					std::putchar(format_str[i]);
 					break;
 			}
 		}
@@ -852,6 +852,52 @@ namespace rlang::alvm {
 		}
 		ResetOF();
 		ResetCF();
+		m_Pc++;
+	}
+
+	void ALVM::PushAllRegisters()
+	{
+		for (std::uint8_t i = (std::uint8_t)RegType::R0; i <= (std::uint8_t)RegType::R31; ++i)
+		{
+			switch (m_Pc->size)
+			{
+				case 8:
+					Push8(m_Registers[i]);
+					break;
+				case 16:
+					Push16(m_Registers[i]);
+					break;
+				case 32:
+					Push32(m_Registers[i]);
+					break;
+				case 64:
+					Push64(m_Registers[i]);
+					break;
+			}
+		}
+		m_Pc++;
+	}
+
+	void ALVM::PopAllRegisters()
+	{
+		for (std::uint8_t i = (std::uint8_t)RegType::R31; i != 255; --i)
+		{
+			switch (m_Pc->size)
+			{
+				case 8:
+					Pop8(m_Registers[i]);
+					break;
+				case 16:
+					Pop16(m_Registers[i]);
+					break;
+				case 32:
+					Pop32(m_Registers[i]);
+					break;
+				case 64:
+					Pop64(m_Registers[i]);
+					break;
+			}
+		}
 		m_Pc++;
 	}
 

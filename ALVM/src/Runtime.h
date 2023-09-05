@@ -84,6 +84,9 @@ namespace rlang::alvm {
 			&ALVM::BitwiseXOR,
 			&ALVM::BitwiseTEST,
 
+			&ALVM::PushAllRegisters,
+			&ALVM::PopAllRegisters,
+
 			&ALVM::SetConioMode,
 			&ALVM::Debug_DumpFlags,
 			&ALVM::Nop
@@ -146,6 +149,9 @@ namespace rlang::alvm {
 		void BitwiseNOT();
 		void BitwiseXOR();
 		void BitwiseTEST();
+
+		void PushAllRegisters();
+		void PopAllRegisters();
 
 		void SetConioMode();
 		void Debug_DumpFlags();

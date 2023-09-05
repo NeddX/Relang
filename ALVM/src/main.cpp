@@ -46,10 +46,10 @@ int main(const int argc, const char* argv[])
                         break;
                     }
                 }
-
-                ALVM vm(data_section, bss_size);
-                vm.Run(code_section, result);
             }
+
+            ALVM vm(data_section, bss_size);
+            vm.Run(code_section, result);
         }
         else
         {

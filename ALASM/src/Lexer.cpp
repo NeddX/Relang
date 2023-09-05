@@ -151,7 +151,7 @@ namespace rlang::rmc {
                         current_token.text.append(1, c);
                         break;
                     }
-                    else if (src[i + 1] >= '0' && src[i + 1] <= '9')
+                    else if ((src[i] == '+' || src[i] == '-') && (src[i + 1] >= '0' && src[i + 1] <= '9'))
                     {
                         EndToken(current_token, tokens);
                         current_token.type = TokenType::Displacement;

@@ -65,6 +65,9 @@ namespace rlang::alvm {
         XOR,
         TEST,
 
+        Pushar,
+        Popar,
+
         SConio,
         DumpFlags,
         Nop
@@ -137,6 +140,8 @@ namespace rlang::alvm {
             "not",
             "xor",
             "test",
+            "pushar",
+            "popar",
 
             // Temporary instructions
             "sconio",

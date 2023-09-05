@@ -238,13 +238,16 @@ namespace rlang::rmc {
                                     {
                                         inf.type = DataType::Byte;
 
+                                        /*
                                         if (tokens[i].type != TokenType::Immediate &&
-                                            tokens[i].type != TokenType::StringLiteral)
+                                            tokens[i].type != TokenType::StringLiteral &&
+                                            tokens[i].type != TokenType::Displacement)
                                         {
                                             ASSEMBLE_ERROR(tokens[i],
-                                                          "Expected a NumberLiteral or a StringLiteral but got "
+                                                          "Expected an Immediate, Displacement or a StringLiteral but got "
                                                           << Token::TokenStr[(std::size_t)tokens[i].type] << " instead.");
                                         }
+                                        */
 
                                         while (run)
                                         {
@@ -255,6 +258,7 @@ namespace rlang::rmc {
                                                     inf.size += tokens[i].text.size();
                                                         break;
                                                 case TokenType::Immediate:
+                                                case TokenType::Displacement:
                                                     m_DataSection.resize(m_DataSection.size() + 1);
                                                     *(std::uint8_t*)(m_DataSection.data() + inf.addr + inf.size) = (std::uint8_t)std::stoul(tokens[i].text);
                                                     inf.size++;
@@ -283,25 +287,37 @@ byte_def_case:
                                                         if (tokens[i].type == TokenType::Operator &&
                                                             tokens[i++].text == "(")
                                                         {
-                                                            if (tokens[i].type == TokenType::Immediate)
+                                                            if ((tokens[i].type != TokenType::Immediate &&
+                                                                tokens[i].type != TokenType::Displacement) ||
+                                                                (tokens[i + 2].type != TokenType::Immediate &&
+                                                                tokens[i + 2].type != TokenType::Displacement))
                                                             {
-                                                                if (tokens[++i].type != TokenType::Operator &&
-                                                                    tokens[i].text != ")")
-                                                                {
-                                                                    ASSEMBLE_ERROR(tokens[i], "Expected a ')'.");
-                                                                }
-                                                                std::size_t size = std::stoul(tokens[i - 1].text) - 1;
-                                                                std::uint8_t data =
-                                                                    *((std::uint8_t*)m_DataSection.data() + inf.size - 1);
-                                                                m_DataSection.resize(inf.size + size);
-                                                                for (auto x = 0; x < size; ++x)
-                                                                    *((std::uint8_t*)m_DataSection.data() + inf.size + x) = data;
-                                                                inf.size += size;
+                                                                ASSEMBLE_ERROR(tokens[i], "fill function expects two number literals.");
                                                             }
-                                                            else
+
+                                                            if (tokens[i + 1].type != TokenType::Operator &&
+                                                                tokens[i + 1].text != ",")
                                                             {
-                                                                ASSEMBLE_ERROR(tokens[i - 1], "fill function takes in a NumberLiteral as an argument.");
+                                                                ASSEMBLE_ERROR(tokens[i], "Expecyed a ','.");
                                                             }
+
+                                                            if (tokens[i + 3].type != TokenType::Operator &&
+                                                                tokens[i + 3].text != ")")
+                                                            {
+                                                                ASSEMBLE_ERROR(tokens[i], "Expected a ')'.");
+                                                            }
+
+                                                            std::uint8_t value = (std::uint8_t)std::stoul(tokens[i].text);
+                                                            std::size_t size = std::stoul(tokens[i + 2].text);
+                                                            m_DataSection.resize(inf.size + size);
+                                                            for (auto x = 0; x < size; ++x)
+                                                                *((std::uint8_t*)m_DataSection.data() + inf.size + x) = value;
+                                                            inf.size += size;
+                                                            i += 3;
+                                                        }
+                                                        else
+                                                        {
+                                                            ASSEMBLE_ERROR(tokens[i], "Expected a '('");
                                                         }
                                                     }
                                                     else
@@ -319,13 +335,16 @@ byte_def_case:
                                     {
                                         inf.type = DataType::Word;
 
+                                        /*
                                         if (tokens[i].type != TokenType::Immediate &&
-                                            tokens[i].type != TokenType::StringLiteral)
+                                            tokens[i].type != TokenType::StringLiteral &&
+                                            tokens[i].type != TokenType::Displacement)
                                         {
                                             ASSEMBLE_ERROR(tokens[i],
                                                           "Expected a NumberLiteral or a StringLiteral but got "
                                                           << Token::TokenStr[(std::size_t)tokens[i].type] << " instead.");
                                         }
+                                        */
 
                                         while (run)
                                         {
@@ -335,6 +354,7 @@ byte_def_case:
                                                     ASSEMBLE_ERROR(tokens[i], "Wide characters are not yet supported.");
                                                     break;
                                                 case TokenType::Immediate:
+                                                case TokenType::Displacement:
                                                     m_DataSection.resize(m_DataSection.size() + 2);
                                                     *(std::uint16_t*)(m_DataSection.data() + inf.addr + inf.size) = (std::uint16_t)std::stoul(tokens[i].text);
                                                     inf.size += 2;
@@ -363,27 +383,40 @@ word_def_case:
                                                         if (tokens[i].type == TokenType::Operator &&
                                                             tokens[i++].text == "(")
                                                         {
-                                                            if (tokens[i].type == TokenType::Immediate)
+                                                            if ((tokens[i].type != TokenType::Immediate &&
+                                                                tokens[i].type != TokenType::Displacement) ||
+                                                                (tokens[i + 2].type != TokenType::Immediate &&
+                                                                tokens[i + 2].type != TokenType::Displacement))
                                                             {
-                                                                if (tokens[++i].type != TokenType::Operator &&
-                                                                    tokens[i].text != ")")
-                                                                {
-                                                                    ASSEMBLE_ERROR(tokens[i], "Expected a ')'.");
-                                                                }
-                                                                std::size_t size = std::stoul(tokens[i - 1].text) - 1;
-                                                                std::uint16_t data =
-                                                                    *((std::uint16_t*)(std::uintptr_t)(m_DataSection.data() + inf.size - 2));
-                                                                m_DataSection.resize(inf.size + size * 2);
-                                                                for (auto x = 0; x < size; ++x)
-                                                                {
-                                                                    *((std::uint16_t*)(std::uintptr_t)(m_DataSection.data() + inf.size + (x * 2)))
-                                                                        = data;
-                                                                }
-                                                                inf.size += size * 2;                                                            }
-                                                            else
-                                                            {
-                                                                ASSEMBLE_ERROR(tokens[i - 1], "fill function takes in a NumberLiteral as an argument.");
+                                                                ASSEMBLE_ERROR(tokens[i], "fill function expects two number literals.");
                                                             }
+
+                                                            if (tokens[i + 1].type != TokenType::Operator &&
+                                                                tokens[i + 1].text != ",")
+                                                            {
+                                                                ASSEMBLE_ERROR(tokens[i], "Expecyed a ','.");
+                                                            }
+
+                                                            if (tokens[i + 3].type != TokenType::Operator &&
+                                                                tokens[i + 3].text != ")")
+                                                            {
+                                                                ASSEMBLE_ERROR(tokens[i], "Expected a ')'.");
+                                                            }
+
+                                                            std::uint16_t value = (std::uint16_t)std::stoul(tokens[i].text);
+                                                            std::size_t size = std::stoul(tokens[i + 1].text);
+                                                            m_DataSection.resize(inf.size + size * 2);
+                                                            for (auto x = 0; x < size; ++x)
+                                                            {
+                                                                *((std::uint16_t*)(std::uintptr_t)(m_DataSection.data() + inf.size + (x * 2)))
+                                                                    = value;
+                                                            }
+                                                            inf.size += size * 2;
+                                                            i += 3;
+                                                        }
+                                                        else
+                                                        {
+                                                            ASSEMBLE_ERROR(tokens[i], "Expected a '('");
                                                         }
                                                     }
                                                     else
@@ -401,12 +434,15 @@ word_def_case:
                                     {
                                         inf.type = DataType::DWord;
 
-                                        if (tokens[i].type != TokenType::Immediate)
+                                        /*
+                                        if (tokens[i].type != TokenType::Immediate &&
+                                            tokens[i].type != TokenType::Displacement)
                                         {
                                             ASSEMBLE_ERROR(tokens[i],
-                                                          "Expected a NumberLiteral but got "
+                                                          "Expected an Immediate or a Displacement but got "
                                                           << Token::TokenStr[(std::size_t)tokens[i].type] << " instead.");
                                         }
+                                        */
 
                                         while (run)
                                         {
@@ -416,6 +452,7 @@ word_def_case:
                                                     ASSEMBLE_ERROR(tokens[i], "Expected a NumberLiteral but got a StringLiteral instead.");
                                                     break;
                                                 case TokenType::Immediate:
+                                                case TokenType::Displacement:
                                                     m_DataSection.resize(m_DataSection.size() + 4);
                                                     *(std::uint32_t*)(m_DataSection.data() + inf.addr + inf.size) = (std::uint32_t)std::stoul(tokens[i].text);
                                                     inf.size += 4;
@@ -444,27 +481,40 @@ dword_def_case:
                                                         if (tokens[i].type == TokenType::Operator &&
                                                             tokens[i++].text == "(")
                                                         {
-                                                            if (tokens[i].type == TokenType::Immediate)
+                                                            if ((tokens[i].type != TokenType::Immediate &&
+                                                                tokens[i].type != TokenType::Displacement) ||
+                                                                (tokens[i + 2].type != TokenType::Immediate &&
+                                                                tokens[i + 2].type != TokenType::Displacement))
                                                             {
-                                                                if (tokens[++i].type != TokenType::Operator &&
-                                                                    tokens[i].text != ")")
-                                                                {
-                                                                    ASSEMBLE_ERROR(tokens[i], "Expected a ')'.");
-                                                                }
-                                                                std::size_t size = std::stoul(tokens[i - 1].text) - 1;
-                                                                std::uint32_t data =
-                                                                    *((std::uint32_t*)(std::uintptr_t)(m_DataSection.data() + inf.size - 4));
-                                                                m_DataSection.resize(inf.size + size * 4);
-                                                                for (auto x = 0; x < size; ++x)
-                                                                {
-                                                                    *((std::uint32_t*)(std::uintptr_t)(m_DataSection.data() + inf.size + (x * 4)))
-                                                                        = data;
-                                                                }
-                                                                inf.size += size * 4;                                                            }
-                                                            else
-                                                            {
-                                                                ASSEMBLE_ERROR(tokens[i - 1], "fill function takes in a NumberLiteral as an argument.");
+                                                                ASSEMBLE_ERROR(tokens[i], "fill function expects two number literals.");
                                                             }
+
+                                                            if (tokens[i + 1].type != TokenType::Operator &&
+                                                                tokens[i + 1].text != ",")
+                                                            {
+                                                                ASSEMBLE_ERROR(tokens[i], "Expecyed a ','.");
+                                                            }
+
+                                                            if (tokens[i + 3].type != TokenType::Operator &&
+                                                                tokens[i + 3].text != ")")
+                                                            {
+                                                                ASSEMBLE_ERROR(tokens[i], "Expected a ')'.");
+                                                            }
+
+                                                            std::uint32_t value = (std::uint32_t)std::stoul(tokens[i].text);
+                                                            std::size_t size = std::stoul(tokens[i + 1].text);
+                                                            m_DataSection.resize(inf.size + size * 4);
+                                                            for (auto x = 0; x < size; ++x)
+                                                            {
+                                                                *((std::uint32_t*)(std::uintptr_t)(m_DataSection.data() + inf.size + (x * 4)))
+                                                                    = value;
+                                                            }
+                                                            inf.size += size * 4;
+                                                            i += 3;
+                                                        }
+                                                        else
+                                                        {
+                                                            ASSEMBLE_ERROR(tokens[i], "Expected a '('");
                                                         }
                                                     }
                                                     else
@@ -482,12 +532,15 @@ dword_def_case:
                                     {
                                         inf.type = DataType::QWord;
 
-                                        if (tokens[i].type != TokenType::Immediate)
+                                        /*
+                                        if (tokens[i].type != TokenType::Immediate &&
+                                            tokens[i].type != TokenType::Displacement)
                                         {
                                             ASSEMBLE_ERROR(tokens[i],
                                                           "Expected a NumberLiteral but got "
                                                           << Token::TokenStr[(std::size_t)tokens[i].type] << " instead.");
                                         }
+                                        */
 
                                         while (run)
                                         {
@@ -498,6 +551,7 @@ dword_def_case:
                                                     inf.size += tokens[i].text.size();
                                                     break;
                                                 case TokenType::Immediate:
+                                                case TokenType::Displacement:
                                                     m_DataSection.resize(m_DataSection.size() + 8);
                                                     *(std::uint64_t*)(m_DataSection.data() + inf.addr + inf.size) = std::stoul(tokens[i].text);
                                                     inf.size += 8;
@@ -526,27 +580,40 @@ qword_def_case:
                                                         if (tokens[i].type == TokenType::Operator &&
                                                             tokens[i++].text == "(")
                                                         {
-                                                            if (tokens[i].type == TokenType::Immediate)
+                                                            if ((tokens[i].type != TokenType::Immediate &&
+                                                                tokens[i].type != TokenType::Displacement) ||
+                                                                (tokens[i + 2].type != TokenType::Immediate &&
+                                                                tokens[i + 2].type != TokenType::Displacement))
                                                             {
-                                                                if (tokens[++i].type != TokenType::Operator &&
-                                                                    tokens[i].text != ")")
-                                                                {
-                                                                    ASSEMBLE_ERROR(tokens[i], "Expected a ')'.");
-                                                                }
-                                                                std::size_t size = std::stoul(tokens[i - 1].text) - 1;
-                                                                std::uint64_t data =
-                                                                    *((std::uint64_t*)(std::uintptr_t)(m_DataSection.data() + inf.size - 8));
-                                                                m_DataSection.resize(inf.size + size * 8);
-                                                                for (auto x = 0; x < size; ++x)
-                                                                {
-                                                                    *((std::uint64_t*)(std::uintptr_t)(m_DataSection.data() + inf.size + (x * 8)))
-                                                                        = data;
-                                                                }
-                                                                inf.size += size * 8;                                                            }
-                                                            else
-                                                            {
-                                                                ASSEMBLE_ERROR(tokens[i - 1], "fill function takes in a NumberLiteral as an argument.");
+                                                                ASSEMBLE_ERROR(tokens[i], "fill function expects two number literals.");
                                                             }
+
+                                                            if (tokens[i + 1].type != TokenType::Operator &&
+                                                                tokens[i + 1].text != ",")
+                                                            {
+                                                                ASSEMBLE_ERROR(tokens[i], "Expecyed a ','.");
+                                                            }
+
+                                                            if (tokens[i + 3].type != TokenType::Operator &&
+                                                                tokens[i + 3].text != ")")
+                                                            {
+                                                                ASSEMBLE_ERROR(tokens[i], "Expected a ')'.");
+                                                            }
+
+                                                            std::uint64_t value = std::stoul(tokens[i].text);
+                                                            std::size_t size = std::stoul(tokens[i + 1].text);
+                                                            m_DataSection.resize(inf.size + size * 8);
+                                                            for (auto x = 0; x < size; ++x)
+                                                            {
+                                                                *((std::uint64_t*)(std::uintptr_t)(m_DataSection.data() + inf.size + (x * 8)))
+                                                                    = value;
+                                                            }
+                                                            inf.size += size * 8;
+                                                            i += 3;
+                                                        }
+                                                        else
+                                                        {
+                                                            ASSEMBLE_ERROR(tokens[i], "Expected a '('");
                                                         }
                                                     }
                                                     else
@@ -568,7 +635,8 @@ qword_def_case:
                             }
                             else if (inst == "align")
                             {
-                                if (tokens[i + 1].type == TokenType::Immediate)
+                                if (tokens[i + 1].type == TokenType::Immediate ||
+                                    tokens[i + 1].type == TokenType::Displacement)
                                 {
                                     m_DataSection.resize(m_DataSection.size() + std::stoul(tokens[i + 1].text));
                                 }
@@ -581,7 +649,8 @@ qword_def_case:
                             {
                                 if (tokens[i + 1].type == TokenType::Identifier)
                                 {
-                                    if (tokens[i + 2].type == TokenType::Immediate)
+                                    if (tokens[i + 2].type == TokenType::Immediate ||
+                                        tokens[i + 2].type == TokenType::Displacement)
                                     {
                                         m_SymbolTable[tokens[i + 1].text] =
                                         {
@@ -681,6 +750,8 @@ qword_def_case:
                                 case alvm::OpCode::Lrzf:
                                 case alvm::OpCode::Srzf:
                                 case alvm::OpCode::Nop:
+                                case alvm::OpCode::Pushar:
+                                case alvm::OpCode::Popar:
                                 case alvm::OpCode::DumpFlags:
                                     if (operand_count > -1)
                                     {
@@ -768,36 +839,33 @@ ok_instruction_case:
                     operand_count = -1;
                     ptr = alvm::RegType::NUL;
 
-                    current_instruction.opcode = GetInst(tokens[i].text.substr(0, tokens[i].text.length() - 1));
+                    current_instruction.opcode = GetInst(tokens[i].text);
+                    current_instruction.size = 64;
                     if (current_instruction.opcode == alvm::OpCode::Nop && utils::string::ToLowerCopy(tokens[i].text) != "nop")
                     {
-                        current_instruction.opcode = GetInst(tokens[i].text);
-                        current_instruction.size = 64;
+                        current_instruction.opcode = GetInst(tokens[i].text.substr(0, tokens[i].text.length() - 1));
                         if (current_instruction.opcode == alvm::OpCode::Nop && utils::string::ToLowerCopy(tokens[i].text) != "nop")
                         {
                             ASSEMBLE_ERROR(tokens[i], "Unknown Instruction " << tokens[i].text << ".");
                         }
-                        break;
-                    }
 
-                    switch (tokens[i].text[tokens[i].text.length() - 1])
-                    {
-                        case 'B':
-                        case 'b':
-                            current_instruction.size = 8;
-                            break;
-                        case 'W':
-                        case 'w':
-                            current_instruction.size = 16;
-                            break;
-                        case 'L':
-                        case 'l':
-                            current_instruction.size = 32;
-                            break;
-                        case 'Q':
-                        case 'q':
-                            current_instruction.size = 64;
-                            break;
+                        switch (tokens[i].text[tokens[i].text.length() - 1])
+                        {
+                            case 'B':
+                            case 'b':
+                                current_instruction.size = 8;
+                                break;
+                            case 'W':
+                            case 'w':
+                                current_instruction.size = 16;
+                                break;
+                            case 'L':
+                            case 'l':
+                                current_instruction.size = 32;
+                                break;
+                            default:
+                                break;
+                        }
                     }
                     break;
                 }
@@ -971,9 +1039,9 @@ ok_instruction_case:
                             // Section definition
                             if (tokens[i + 2].text == "data")
                             {
-                                if (m_CurrentSection == "bss")
+                                if (m_CurrentSection == "bss" || m_CurrentSection == "code")
                                 {
-                                    ASSEMBLE_ERROR(tokens[i + 2], "data section must be defined before bss section.");
+                                    ASSEMBLE_ERROR(tokens[i + 2], "data section must be defined before " << m_CurrentSection << " section.");
                                 }
                             }
                             else if (tokens[i + 2].text == "bss")
