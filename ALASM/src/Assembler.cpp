@@ -260,7 +260,7 @@ namespace rlang::rmc {
                                                 case TokenType::Immediate:
                                                 case TokenType::Displacement:
                                                     m_DataSection.resize(m_DataSection.size() + 1);
-                                                    *(std::uint8_t*)(m_DataSection.data() + inf.addr + inf.size) = (std::uint8_t)std::stoul(tokens[i].text);
+                                                    *(std::uint8_t*)(m_DataSection.data() + inf.addr + inf.size) = (std::uint8_t)std::stoull(tokens[i].text);
                                                     inf.size++;
                                                     break;
                                                 case TokenType::Operator:
@@ -307,11 +307,11 @@ byte_def_case:
                                                                 ASSEMBLE_ERROR(tokens[i], "Expected a ')'.");
                                                             }
 
-                                                            std::uint8_t value = (std::uint8_t)std::stoul(tokens[i].text);
-                                                            std::size_t size = std::stoul(tokens[i + 2].text);
-                                                            m_DataSection.resize(inf.size + size);
+                                                            std::uint8_t value = (std::uint8_t)std::stoull(tokens[i].text);
+                                                            std::size_t size = std::stoull(tokens[i + 2].text);
+                                                            m_DataSection.resize(inf.addr + size);
                                                             for (auto x = 0; x < size; ++x)
-                                                                *((std::uint8_t*)m_DataSection.data() + inf.size + x) = value;
+                                                                *((std::uint8_t*)m_DataSection.data() + inf.addr + x) = value;
                                                             inf.size += size;
                                                             i += 3;
                                                         }
@@ -356,7 +356,7 @@ byte_def_case:
                                                 case TokenType::Immediate:
                                                 case TokenType::Displacement:
                                                     m_DataSection.resize(m_DataSection.size() + 2);
-                                                    *(std::uint16_t*)(m_DataSection.data() + inf.addr + inf.size) = (std::uint16_t)std::stoul(tokens[i].text);
+                                                    *(std::uint16_t*)(m_DataSection.data() + inf.addr + inf.size) = (std::uint16_t)std::stoull(tokens[i].text);
                                                     inf.size += 2;
                                                     break;
                                                 case TokenType::Operator:
@@ -403,12 +403,12 @@ word_def_case:
                                                                 ASSEMBLE_ERROR(tokens[i], "Expected a ')'.");
                                                             }
 
-                                                            std::uint16_t value = (std::uint16_t)std::stoul(tokens[i].text);
-                                                            std::size_t size = std::stoul(tokens[i + 1].text);
-                                                            m_DataSection.resize(inf.size + size * 2);
+                                                            std::uint16_t value = (std::uint16_t)std::stoull(tokens[i].text);
+                                                            std::size_t size = std::stoull(tokens[i + 1].text);
+                                                            m_DataSection.resize(inf.addr + size * 2);
                                                             for (auto x = 0; x < size; ++x)
                                                             {
-                                                                *((std::uint16_t*)(std::uintptr_t)(m_DataSection.data() + inf.size + (x * 2)))
+                                                                *((std::uint16_t*)(std::uintptr_t)(m_DataSection.data() + inf.addr + (x * 2)))
                                                                     = value;
                                                             }
                                                             inf.size += size * 2;
@@ -454,7 +454,7 @@ word_def_case:
                                                 case TokenType::Immediate:
                                                 case TokenType::Displacement:
                                                     m_DataSection.resize(m_DataSection.size() + 4);
-                                                    *(std::uint32_t*)(m_DataSection.data() + inf.addr + inf.size) = (std::uint32_t)std::stoul(tokens[i].text);
+                                                    *(std::uint32_t*)(m_DataSection.data() + inf.addr + inf.size) = (std::uint32_t)std::stoull(tokens[i].text);
                                                     inf.size += 4;
                                                     break;
                                                 case TokenType::Operator:
@@ -501,12 +501,12 @@ dword_def_case:
                                                                 ASSEMBLE_ERROR(tokens[i], "Expected a ')'.");
                                                             }
 
-                                                            std::uint32_t value = (std::uint32_t)std::stoul(tokens[i].text);
-                                                            std::size_t size = std::stoul(tokens[i + 1].text);
-                                                            m_DataSection.resize(inf.size + size * 4);
+                                                            std::uint32_t value = (std::uint32_t)std::stoull(tokens[i].text);
+                                                            std::size_t size = std::stoull(tokens[i + 1].text);
+                                                            m_DataSection.resize(inf.addr + size * 4);
                                                             for (auto x = 0; x < size; ++x)
                                                             {
-                                                                *((std::uint32_t*)(std::uintptr_t)(m_DataSection.data() + inf.size + (x * 4)))
+                                                                *((std::uint32_t*)(std::uintptr_t)(m_DataSection.data() + inf.addr + (x * 4)))
                                                                     = value;
                                                             }
                                                             inf.size += size * 4;
@@ -553,7 +553,7 @@ dword_def_case:
                                                 case TokenType::Immediate:
                                                 case TokenType::Displacement:
                                                     m_DataSection.resize(m_DataSection.size() + 8);
-                                                    *(std::uint64_t*)(m_DataSection.data() + inf.addr + inf.size) = std::stoul(tokens[i].text);
+                                                    *(std::uint64_t*)(m_DataSection.data() + inf.addr + inf.size) = std::stoull(tokens[i].text);
                                                     inf.size += 8;
                                                     break;
                                                 case TokenType::Operator:
@@ -600,12 +600,12 @@ qword_def_case:
                                                                 ASSEMBLE_ERROR(tokens[i], "Expected a ')'.");
                                                             }
 
-                                                            std::uint64_t value = std::stoul(tokens[i].text);
-                                                            std::size_t size = std::stoul(tokens[i + 1].text);
-                                                            m_DataSection.resize(inf.size + size * 8);
+                                                            std::uint64_t value = std::stoull(tokens[i].text);
+                                                            std::size_t size = std::stoull(tokens[i + 1].text);
+                                                            m_DataSection.resize(inf.addr + size * 8);
                                                             for (auto x = 0; x < size; ++x)
                                                             {
-                                                                *((std::uint64_t*)(std::uintptr_t)(m_DataSection.data() + inf.size + (x * 8)))
+                                                                *((std::uint64_t*)(std::uintptr_t)(m_DataSection.data() + inf.addr + (x * 8)))
                                                                     = value;
                                                             }
                                                             inf.size += size * 8;
@@ -638,7 +638,7 @@ qword_def_case:
                                 if (tokens[i + 1].type == TokenType::Immediate ||
                                     tokens[i + 1].type == TokenType::Displacement)
                                 {
-                                    m_DataSection.resize(m_DataSection.size() + std::stoul(tokens[i + 1].text));
+                                    m_DataSection.resize(m_DataSection.size() + std::stoull(tokens[i + 1].text));
                                 }
                                 else
                                 {
@@ -655,7 +655,7 @@ qword_def_case:
                                         m_SymbolTable[tokens[i + 1].text] =
                                         {
                                             .size = 4,
-                                            .value = std::stoul(tokens[i + 2].text),
+                                            .value = std::stoull(tokens[i + 2].text),
                                             .constant = true,
                                             .type = DataType::QWord
                                         };
@@ -718,8 +718,8 @@ qword_def_case:
                                    {
                                         inf.type = DataType::QWord;
                                    }
-                                   inf.size = SizeOfDataTypeB(inf.type);
-                                   m_BssSize += std::stoul(tokens[i].text) * inf.size;
+                                   inf.size = SizeOfDataTypeB(inf.type) * std::stoull(tokens[i].text);
+                                   m_BssSize += inf.size;
                                    m_SymbolTable[tokens[inst_token_id + 1].text] = inf;
                                    break;
                                 }
@@ -859,8 +859,8 @@ ok_instruction_case:
                             case 'w':
                                 current_instruction.size = 16;
                                 break;
-                            case 'L':
-                            case 'l':
+                            case 'D':
+                            case 'd':
                                 current_instruction.size = 32;
                                 break;
                             default:
@@ -871,10 +871,12 @@ ok_instruction_case:
                 }
                 case TokenType::Displacement:
                 {
+                    /*
                     if (tokens[i + 1].type != TokenType::Operator && tokens[i + 1].text != "(")
                     {
                         ASSEMBLE_ERROR(tokens[i], "Bad displacement.");
                     }
+                    */
 
                     if (ptr != alvm::RegType::NUL)
                     {
@@ -884,7 +886,7 @@ ok_instruction_case:
                     {
                         // Displacer...
                         ptr = alvm::RegType::PTR;
-                        current_instruction.displacement = (std::int32_t)std::stoul(tokens[i].text);
+                        current_instruction.displacement = (std::int32_t)std::stoull(tokens[i].text);
                     }
                     break;
                 }
@@ -895,13 +897,13 @@ ok_instruction_case:
                         alvm::RegType reg = GetReg(tokens[i + 1].text);
                         if (reg != alvm::RegType::NUL)
                         {
-                            if (current_instruction.sreg == alvm::RegType::NUL)
+                            if (operand_count <= 0)
                             {
                                 current_instruction.sreg = reg;
                                 if (ptr != alvm::RegType::NUL)
                                     current_instruction.sreg = (alvm::RegType)(current_instruction.sreg | ptr);
                             }
-                            else
+                            else if (operand_count > 0)
                             {
                                 current_instruction.dreg = reg;
                                 if (ptr != alvm::RegType::NUL)
@@ -914,6 +916,60 @@ ok_instruction_case:
                             ASSEMBLE_ERROR(tokens[i + 1], "Undefined Identifier '" << tokens[i + 1].text << "'.");
                         }
                         if (operand_count <= -1) operand_count++;
+                    }
+                    else if (tokens[i].text == "+")
+                    {
+                        if (tokens[i - 1].type == TokenType::Identifier)
+                        {
+                            if (tokens[i + 1].type == TokenType::Immediate ||
+                                tokens[i + 1].type == TokenType::Displacement)
+                            {
+                                auto it = m_SymbolTable.find(tokens[i - 1].text);
+                                if (it != m_SymbolTable.end())
+                                {
+                                    current_instruction.displacement += (std::int32_t)std::stoull(tokens[i + 1].text);
+                                }
+                                else
+                                {
+                                    ASSEMBLE_ERROR(tokens[i - 1], "Unknown Identifier " << tokens[i - 1].text << ".");
+                                }
+                            }
+                            else
+                            {
+                                ASSEMBLE_ERROR(tokens[i], "Expected a Number at the right hand side of the + operator.");
+                            }
+                        }
+                        else
+                        {
+                            ASSEMBLE_ERROR(tokens[i], "Expected an Identifier at the left hand side of the + operator.");
+                        }
+                    }
+                    else if (tokens[i].text == "-")
+                    {
+                        if (tokens[i - 1].type == TokenType::Identifier)
+                        {
+                            if (tokens[i + 1].type == TokenType::Immediate ||
+                                tokens[i + 1].type == TokenType::Displacement)
+                            {
+                                auto it = m_SymbolTable.find(tokens[i - 1].text);
+                                if (it != m_SymbolTable.end())
+                                {
+                                    current_instruction.displacement -= (std::int32_t)std::stoull(tokens[i + 1].text);
+                                }
+                                else
+                                {
+                                    ASSEMBLE_ERROR(tokens[i - 1], "Unknown Identifier " << tokens[i - 1].text << ".");
+                                }
+                            }
+                            else
+                            {
+                                ASSEMBLE_ERROR(tokens[i], "Expected a Number at the right hand side of the + operator.");
+                            }
+                        }
+                        else
+                        {
+                            ASSEMBLE_ERROR(tokens[i], "Expected an Identifier at the left hand side of the + operator.");
+                        }
                     }
                     else if (tokens[i].text == "(")
                     {
