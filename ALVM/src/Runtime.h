@@ -39,6 +39,7 @@ namespace rlang::alvm {
 			&ALVM::Printf,
 			&ALVM::PrintInt,
 			&ALVM::PrintStr,
+			&ALVM::PrintChar,
             &ALVM::Compare,
 			&ALVM::Move,
 			&ALVM::Lea,
@@ -111,6 +112,7 @@ namespace rlang::alvm {
 		void Printf();
 		void PrintInt();
 		void PrintStr();
+		void PrintChar();
         void Compare();
 		void Move();
 		void Lea();

@@ -237,18 +237,6 @@ namespace rlang::rmc {
                                     if (inst == "byte")
                                     {
                                         inf.type = DataType::Byte;
-
-                                        /*
-                                        if (tokens[i].type != TokenType::Immediate &&
-                                            tokens[i].type != TokenType::StringLiteral &&
-                                            tokens[i].type != TokenType::Displacement)
-                                        {
-                                            ASSEMBLE_ERROR(tokens[i],
-                                                          "Expected an Immediate, Displacement or a StringLiteral but got "
-                                                          << Token::TokenStr[(std::size_t)tokens[i].type] << " instead.");
-                                        }
-                                        */
-
                                         while (run)
                                         {
                                             switch (tokens[i].type)
@@ -334,18 +322,6 @@ byte_def_case:
                                     else if (inst == "word")
                                     {
                                         inf.type = DataType::Word;
-
-                                        /*
-                                        if (tokens[i].type != TokenType::Immediate &&
-                                            tokens[i].type != TokenType::StringLiteral &&
-                                            tokens[i].type != TokenType::Displacement)
-                                        {
-                                            ASSEMBLE_ERROR(tokens[i],
-                                                          "Expected a NumberLiteral or a StringLiteral but got "
-                                                          << Token::TokenStr[(std::size_t)tokens[i].type] << " instead.");
-                                        }
-                                        */
-
                                         while (run)
                                         {
                                             switch (tokens[i].type)
@@ -433,17 +409,6 @@ word_def_case:
                                     else if (inst == "dword")
                                     {
                                         inf.type = DataType::DWord;
-
-                                        /*
-                                        if (tokens[i].type != TokenType::Immediate &&
-                                            tokens[i].type != TokenType::Displacement)
-                                        {
-                                            ASSEMBLE_ERROR(tokens[i],
-                                                          "Expected an Immediate or a Displacement but got "
-                                                          << Token::TokenStr[(std::size_t)tokens[i].type] << " instead.");
-                                        }
-                                        */
-
                                         while (run)
                                         {
                                             switch (tokens[i].type)
@@ -531,17 +496,6 @@ dword_def_case:
                                     else if (inst == "qword")
                                     {
                                         inf.type = DataType::QWord;
-
-                                        /*
-                                        if (tokens[i].type != TokenType::Immediate &&
-                                            tokens[i].type != TokenType::Displacement)
-                                        {
-                                            ASSEMBLE_ERROR(tokens[i],
-                                                          "Expected a NumberLiteral but got "
-                                                          << Token::TokenStr[(std::size_t)tokens[i].type] << " instead.");
-                                        }
-                                        */
-
                                         while (run)
                                         {
                                             switch (tokens[i].type)
@@ -730,12 +684,6 @@ qword_def_case:
                             }
                         }
                     }
-                    /* What? what is this for???
-                    else if (m_CurrentSection != "code")
-                    {
-                        ASSEMBLE_ERROR(tokens[i], "No section defined.");
-                    }
-                    */
 
                     if (i > 0)
                     {
@@ -778,6 +726,7 @@ qword_def_case:
                                 case alvm::OpCode::Enter:
                                 case alvm::OpCode::PInt:
                                 case alvm::OpCode::PStr:
+                                case alvm::OpCode::PChr:
                                 case alvm::OpCode::Push:
                                 case alvm::OpCode::Pop:
                                 case alvm::OpCode::Mul:
@@ -877,7 +826,6 @@ ok_instruction_case:
                         ASSEMBLE_ERROR(tokens[i], "Bad displacement.");
                     }
                     */
-
                     if (ptr != alvm::RegType::NUL)
                     {
                         // Scaler...
@@ -980,7 +928,13 @@ ok_instruction_case:
                         auto base_reg = GetReg(tokens[++i].text);
                         if (base_reg == alvm::RegType::NUL)
                         {
-                            ASSEMBLE_ERROR(tokens[i], "Expected a register.");
+                            auto it = m_SymbolTable.find(tokens[--i].text);
+                            if (it == m_SymbolTable.end())
+                            {
+                                ASSEMBLE_ERROR(tokens[i], "Expected a register or a symbol.");
+                            }
+                            i--;
+                            break;
                         }
 
                         base_reg = (alvm::RegType)(base_reg | alvm::RegType::PTR);
@@ -1142,8 +1096,8 @@ ok_instruction_case:
                             }
                             else if (tokens[i + 2].type == TokenType::Operator || tokens[i + 2].text == ":")
                             {
-                                i += 2;
                                 // It's a local label definition, ignore it.
+                                i += 2;
                                 break;
                             }
                             else
@@ -1286,35 +1240,6 @@ ok_instruction_case:
                         switch (current_instruction.opcode)
                         {
                             // Instructions that accept registers in their both operands
-                            /*default:
-                                if (it->second.type != DataType::Undefined)
-                                {
-                                    if (it->second.constant)
-                                    {
-                                        ASSEMBLE_ERROR(tokens[i], "Instruction doesn't accept an immediate value as an operand.");
-                                    }
-                                    else
-                                    {
-                                        if (operand_count > 0)
-                                        {
-                                            current_instruction.reg1 = (alvm::RegType)((alvm::RegType)(alvm::RegType::DS | 0x80));
-                                            current_instruction.displacement = (std::int64_t)it->second.addr;
-                                            //current_instruction.size = SizeOfDataType(it->second.type);
-                                        }
-                                        else if (operand_count == 0)
-                                        {
-                                            current_instruction.reg2 = (alvm::RegType)(alvm::RegType::DS | 0x80);
-                                            current_instruction.displacement = (std::int64_t)it->second.addr;
-                                            //current_instruction.size = SizeOfDataType(it->second.type);
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    ASSEMBLE_ERROR(tokens[i], "Instruction expects one of the following types: BYTE, WORD, DWORD, QWORD");
-                                }
-                                break;
-                            */
                             default:
                                 if (it->second.constant)
                                 {
@@ -1464,7 +1389,6 @@ ok_instruction_case:
                                         {
                                             current_instruction.sreg = (alvm::RegType)(alvm::RegType::DS | 0x80);
                                             current_instruction.displacement = (std::int64_t)it->second.addr;
-                                            //current_instruction.size = SizeOfDataType(it->second.type);
                                         }
                                     }
                                     else

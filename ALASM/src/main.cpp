@@ -335,6 +335,7 @@ void DumpIntermediate(const rlang::alvm::InstructionList& code, const std::optio
                     switch (inst.opcode)
                     {
                         case rlang::alvm::OpCode::PInt:
+                        case rlang::alvm::OpCode::PChr:
                         case rlang::alvm::OpCode::Enter:
                         case rlang::alvm::OpCode::SConio:
                         case rlang::alvm::OpCode::Push:

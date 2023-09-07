@@ -1,7 +1,7 @@
 .section data:
     byte        _LC0            "a very very big string. like reallyyyy big. some serious important data packing enormous string! massive us top secret packing sha2048base256aeswepwpawpa2wpa3wpa10 ecnrypted encoded humongous string!! humongougobongolo ascii string! hangalanganonogangas string!!!!!!!!", 10, 0
     byte        _LC1            "%b, ", 0
-    byte        _LC2            10, 0
+    byte        _LC2            '\n'
 
 .section bss:
     byte        BSSBUFFER           256
@@ -68,7 +68,8 @@
 
 .l2:
     ; Print new line.
-    pstr _LC2
+    leaq _LC2, %r0
+    pchr %r0
 
     ; Restore our registers back.
     poparq

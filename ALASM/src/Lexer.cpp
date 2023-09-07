@@ -30,6 +30,48 @@ namespace rlang::rmc {
                     current_token.type = TokenType::Immediate;
                     break;
                 }
+                case '\'':
+                {
+                    if (current_token.type == TokenType::Comment || current_token.type == TokenType::StringLiteral)
+                    {
+                        current_token.text.append(1, c);
+                        break;
+                    }
+                    EndToken(current_token, tokens);
+                    current_token.type = TokenType::Immediate;
+
+                    std::uint16_t cx = src[++i];
+                    if (cx == '\\')
+                    {
+                        switch (src[++i])
+                        {
+                            case 'n':
+                                current_token.text = "10";
+                                break;
+                            case 't':
+                                current_token.text = "9";
+                                break;
+                            case 'r':
+                                current_token.text = "13";
+                                break;
+                            case '0':
+                                current_token.text = "0";
+                                break;
+                            case '\\':
+                                current_token.text = "92";
+                                break;
+                            case '\'':
+                                current_token.text = "39";
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        current_token.text = std::to_string(cx);
+                    }
+                    i++;
+                    break;
+                }
                 case '0':
                 case '1':
                 case '2':

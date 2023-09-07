@@ -455,8 +455,20 @@ namespace rlang::alvm {
 
 	void ALVM::PrintStr()
 	{
-		// FIXME: Possibly unsafe.
-		std::printf("%s", (const char*)(m_Registers[RegDeref(m_Pc->sreg)] + m_Pc->displacement + m_Registers[m_Pc->src_reg]));
+		std::printf("%s", (const char*)m_Registers[m_Pc->sreg]);
+		m_Pc++;
+	}
+
+	void ALVM::PrintChar()
+	{
+		if (m_Pc->sreg != RegType::NUL)
+		{
+			std::putchar(*(const char*)m_Registers[m_Pc->sreg]);
+		}
+		else
+		{
+			std::putchar(m_Pc->imm64);
+		}
 		m_Pc++;
 	}
 
