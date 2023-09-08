@@ -674,7 +674,7 @@ namespace rlang::alvm {
 
 	void ALVM::System()
 	{
-		auto status = std::system((const char*)m_Registers[RegDeref(m_Pc->sreg)] + m_Pc->displacement + m_Registers[m_Pc->src_reg]);
+		auto status = std::system((const char*)m_Registers[m_Pc->sreg]);
 		m_Registers[RegType::R4] = status;
 		m_Pc++;
 	}

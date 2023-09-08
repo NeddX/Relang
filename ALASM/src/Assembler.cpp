@@ -1326,7 +1326,7 @@ ok_instruction_case:
                                 {
                                     if (it->second.constant)
                                     {
-                                        if (operand_count >= 0)
+                                        if (operand_count > 0)
                                         {
                                             ASSEMBLE_ERROR(tokens[i], "Instruction doesn't accept an immediate value as its destination operand.");
                                         }
