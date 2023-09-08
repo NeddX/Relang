@@ -151,70 +151,6 @@ void DumpIntermediate(const rlang::alvm::InstructionList& code, const std::optio
                     }
                 }
             }
-
-            /*
-            if (inst.sreg == rlang::alvm::RegType::NUL)
-            {
-                fs << " $0x" << inst.imm64;
-            }
-            else
-            {
-                if (inst.sreg & rlang::alvm::RegType::PTR)
-                {
-                    fs << " ";
-                    if (inst.displacement != 0)
-                    {
-                        fs << std::hex << ((inst.displacement < 0) ? "-$0x" : "+$0x") << std::abs(inst.displacement);
-                    }
-                    fs << "(%"
-                       << rlang::alvm::Register::RegisterStr[(std::size_t)(inst.sreg & rlang::alvm::RegType::DPTR)];
-                    if (inst.src_reg != rlang::alvm::RegType::NUL)
-                    {
-                        fs << ", %" << rlang::alvm::Register::RegisterStr[(std::size_t)inst.src_reg];
-                    }
-                    fs << ")";
-                }
-                else
-                {
-                    fs << " %" << rlang::alvm::Register::RegisterStr[(std::size_t)inst.sreg];
-                }
-
-                if (inst.dreg != rlang::alvm::RegType::NUL)
-                {
-                    if (inst.dreg & rlang::alvm::RegType::PTR)
-                    {
-                        fs << ", ";
-                        if (inst.displacement != 0)
-                        {
-                            fs << std::hex << ((inst.displacement < 0) ? "-0x" : "+0x") << std::abs(inst.displacement);
-                        }
-                        fs << " (%"
-                           << rlang::alvm::Register::RegisterStr[(std::size_t)(inst.dreg & rlang::alvm::RegType::DPTR)];
-                        if (inst.src_reg != rlang::alvm::RegType::NUL)
-                        {
-                            fs << ", %" << rlang::alvm::Register::RegisterStr[(std::size_t)inst.src_reg];
-                        }
-                        fs << ")";
-                    }
-                    else
-                    {
-                        fs << ", %" << rlang::alvm::Register::RegisterStr[(std::size_t)inst.dreg];
-                    }
-                }
-                else
-                {
-                    if (inst.opcode != rlang::alvm::OpCode::Push &&
-                        inst.opcode != rlang::alvm::OpCode::End &&
-                        inst.opcode != rlang::alvm::OpCode::PStr &&
-                        inst.opcode != rlang::alvm::OpCode::PInt &&
-                        inst.opcode != rlang::alvm::OpCode::Inc &&
-                        inst.opcode != rlang::alvm::OpCode::Dec)
-                    {
-                        fs << ", $0x" << inst.imm64;
-                    }
-                }
-            }
-            */
             fs << "\n";
         }
     }
@@ -232,12 +168,6 @@ void DumpIntermediate(const rlang::alvm::InstructionList& code, const std::optio
                         inst.src_reg,
                         inst.size,
                         rlang::alvm::Instruction::InstructionStr[(std::size_t)inst.opcode].c_str());
-            /*
-            std::cout << "0x" << i++ << ":\t" << std::hex << (std::uint16_t)inst.opcode;
-            std::cout << " " << inst.imm64 << " " << (std::uint16_t)inst.reg1 << " " << (std::uint16_t)inst.reg2;
-            std::cout << " " << inst.displacement << " " << (std::uint16_t)inst.src_reg << " " << (std::uint16_t)inst.size;
-            std::cout << "\t\t\t" << rlang::alvm::Instruction::InstructionStr[(std::size_t)inst.opcode];
-            */
 
             switch (inst.size)
             {
@@ -378,7 +308,7 @@ int main(const int argc, const char* argv[])
     {
         for (int i = 1; i < argc; ++i)
         {
-            if (std::strcmp(argv[i], "--dump-intermediate") == 0)
+            if (std::strcmp(argv[i], "-D") == 0)
             {
                 intermediate = true;
             }
@@ -448,10 +378,11 @@ int main(const int argc, const char* argv[])
             std::string src_code = std::string(std::istreambuf_iterator<char>(fs), std::istreambuf_iterator<char>());
             auto tk_list = rlang::rmc::Lexer::Start(src_code);
             AssemblerOptions opt =
-                {
+            {
                     .type = OutputType::XBin,
                     .tokens = tk_list,
-                    .path = output_filepath};
+                    .path = output_filepath
+            };
 
             auto asmblr_result = Assembler::Assemble(opt);
             if (asmblr_result.status == AssemblerStatus::Ok)
