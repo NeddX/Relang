@@ -20,7 +20,7 @@ and then run
 #+BEGIN_SRC bash
 ./build
 #+END_SRC
-If the compilation was successful, you should see the binaries at =bin/=.
+If the compilation was successful, you should see the binaries in the =bin/= directory.
 
 *** Windows
 Coming up.
