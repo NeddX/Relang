@@ -1,13 +1,13 @@
-#+title: README
+#+title: ALVM
 #+author: Neddiendrohu
 
-* ALVM
+* About
 Basic 64bit register-based bytecode virtual machine written in C++20.
 The bytecode mnemonics are almost identical to that of x86.
 Has 32 64bit wide general purpose registers =%r0 - %r31=.
 Ships with a basic assembler that is inspired by NASM and MASM.
 
-** Build
+** Build instructions
 *** Linux
 - Requires CMake 3.20+
 - Clang 16.0.6+
