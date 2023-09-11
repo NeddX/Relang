@@ -28,11 +28,11 @@ echo "Building..."
 cmake --build ./
 cp "compile_commands.json" ../../
 
-if [ ! -d "../../bin" ]; then
-	mkdir -p "../../bin"
-fi
+#if [ ! -d "../../bin" ]; then
+#	mkdir -p "../../bin"
+#fi
 
-cp "ALVM/ALVM" ../../bin/alvm
-cp "ALASM/ALASM" ../../bin/alasm
+#cp "ALVM/ALVM" ../../bin/alvm
+#cp "ALASM/ALASM" ../../bin/alasm
 
 echo "Build finished."

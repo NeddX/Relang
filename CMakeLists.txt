@@ -10,7 +10,6 @@ if (DEFINED CMAKE_BUILD_TYPE)
 	elseif (CMAKE_BUILD_TYPE STREQUAL "Release")
 		if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
-			message(" :: OPTIMIZATION")
 		endif()
 	endif()
 else()
@@ -30,9 +29,18 @@ endif()
 #   endif()
 #endif()
 
+# Set some macros--
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
-set(VENDOR_DIR "${CMAKE_SOURCE_DIR}/vendor/")
+set(VENDOR_DIR "${CMAKE_SOURCE_DIR}/vendor")
+set(ALVM_BINARY_OUTPUT_DIR "${CMAKE_SOURCE_DIR}/bin/")
+set(ALVM_LIBRARY_OUTPUT_DIR "${CMAKE_SOURCE_DIR}/lib/")
 
-add_subdirectory("ALVM")
-add_subdirectory("ALASM")
+# Create the bin/ and lib/ folders in the root directory.
+add_custom_target(build-time-make-directory ALL
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${ALVM_BINARY_OUTPUT_DIR}
+	COMMAND ${CMAKE_COMMAND} -E make_directory ${ALVM_LIBRARY_OUTPUT_DIR})
+
+add_subdirectory("alvm")
+add_subdirectory("alasm")
+add_subdirectory("alcc")
