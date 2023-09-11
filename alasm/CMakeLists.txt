@@ -41,6 +41,6 @@ endif()
 # Copy the compiled binary and library to bin/ and lib/ directories.
 add_custom_command(TARGET alasm POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:alasm> ${ALVM_BINARY_OUTPUT_DIR}
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:alasm-static> ${ALVM_LIBRARY_OUTPUT_DIR}
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:alvm-static> ${ALVM_LIBRARY_OUTPUT_DIR}
+    #COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:alasm-shared> ${ALVM_LIBRARY_OUTPUT_DIR}
+    #COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:alvm-shared> ${ALVM_LIBRARY_OUTPUT_DIR}
 )

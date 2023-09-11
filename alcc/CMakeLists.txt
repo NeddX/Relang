@@ -10,23 +10,20 @@ if (NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "Debug")
         COMMAND cargo build --target-dir "${ALCC_OUTPUT_DIR}"
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
-
     add_custom_command(
         TARGET alcc-rs
         POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory "${ALCC_OUTPUT_DIR}/debug/" "${ALVM_BINARY_OUTPUT_DIR}"
     )
-    #file(GLOB OUTPUT_FILES "${ALCC_OUTPUT_DIR}/debug/*")
-    #file(COPY ${OUTPUT_FILES} DESTINATION "${ALVM_BINARY_OUTPUT_DIR}")
 elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
     add_custom_target(
         alcc-rs ALL
         COMMAND cargo build --target-dir "${ALCC_OUTPUT_DIR}" --release
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
-
-    file(GLOB OUTPUT_FILES "${ALCC_OUTPUT_DIR}/release/*")
-    file(COPY ${OUTPUT_FILES} DESTINATION "${ALVM_BINARY_OUTPUT_DIR}")
+    add_custom_command(
+        TARGET alcc-rs
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${ALCC_OUTPUT_DIR}/debug/" "${ALVM_BINARY_OUTPUT_DIR}"
+    )
 endif()
-
-#install(TARGETS ALCC-RS DESTINATION ${CMAKE_SOURCE_DIR}/bin/)

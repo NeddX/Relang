@@ -6,15 +6,21 @@ if (DEFINED CMAKE_BUILD_TYPE)
 	if (CMAKE_BUILD_TYPE STREQUAL "Debug")
 		if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0")
+		elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /O0")
 		endif()	
 	elseif (CMAKE_BUILD_TYPE STREQUAL "Release")
 		if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
+		elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /O3")
 		endif()
 	endif()
 else()
 	if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0")
+	elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /O0")
 	endif()
 endif()
 
@@ -37,10 +43,19 @@ set(ALVM_BINARY_OUTPUT_DIR "${CMAKE_SOURCE_DIR}/bin/")
 set(ALVM_LIBRARY_OUTPUT_DIR "${CMAKE_SOURCE_DIR}/lib/")
 
 # Create the bin/ and lib/ folders in the root directory.
-add_custom_target(build-time-make-directory ALL
+add_custom_target(build-time-config ALL
     COMMAND ${CMAKE_COMMAND} -E make_directory ${ALVM_BINARY_OUTPUT_DIR}
-	COMMAND ${CMAKE_COMMAND} -E make_directory ${ALVM_LIBRARY_OUTPUT_DIR})
+	COMMAND ${CMAKE_COMMAND} -E make_directory ${ALVM_LIBRARY_OUTPUT_DIR}
+)
 
+# Sub projects
 add_subdirectory("alvm")
 add_subdirectory("alasm")
 add_subdirectory("alcc")
+
+# Copy compile commands to the root directory.
+add_custom_command(
+	TARGET build-time-config
+	POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/compile_commands.json" "${CMAKE_SOURCE_DIR}"
+)

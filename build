@@ -1,38 +1,38 @@
 #!/bin/bash
 
-clear
-echo "Build started."
+echo "[!]: Build started"
 
 export CC=$(which clang)
 export CXX=$(which clang++)
 
-platform="linux"
+kernel=$(uname -s | tr '[:upper:]' '[:lower:]')
+arch=$(uname -m | tr '[:upper:]' '[:lower:]')
+platform="$kernel-$arch"
+build_conf="Debug"
 cpwd=$pwd
 
-if [ ! -d "builds" ]; then
-    echo "Configuring CMake..."
-	mkdir -p "builds"
-	mkdir -p "builds/$platform"
-	cd "builds/$platform"
-	cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug ../../
-elif [ ! -d "builds/$platform" ]; then
-	echo "Configuring CMake.."
-    mkdir -p "builds/$platform"
-	cd "builds/$platform"
-	cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug ../../
+if [ -z "$1" ]; then
+    build_conf="Debug"
 else
-	cd "builds/$platform"
+    build_conf="$1"
 fi
 
-echo "Building..."
+if [ ! -d "builds" ]; then
+    echo "[!]: Configuring CMake..."
+        mkdir -p "builds"
+        mkdir -p "builds/$platform"
+        cd "builds/$platform"
+        cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE="$build_conf" ../../
+elif [ ! -d "builds/$platform" ]; then
+        echo "[!]: Configuring CMake.."
+        mkdir -p "builds/$platform"
+        cd "builds/$platform"
+        cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE="$build_conf" ../../
+else
+        cd "builds/$platform"
+fi
+
+echo "[!]: Building..."
 cmake --build ./
-cp "compile_commands.json" ../../
 
-#if [ ! -d "../../bin" ]; then
-#	mkdir -p "../../bin"
-#fi
-
-#cp "ALVM/ALVM" ../../bin/alvm
-#cp "ALASM/ALASM" ../../bin/alasm
-
-echo "Build finished."
+echo "[!]: Build finished."

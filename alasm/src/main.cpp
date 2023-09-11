@@ -148,6 +148,8 @@ void DumpIntermediate(const rlang::alvm::InstructionList& code, const std::optio
                         case rlang::alvm::OpCode::Jl:
                             fs << " $0x" << inst.imm64;
                             break;
+                        default:
+                            break;
                     }
                 }
             }
@@ -286,6 +288,8 @@ void DumpIntermediate(const rlang::alvm::InstructionList& code, const std::optio
                         case rlang::alvm::OpCode::Jule:
                         case rlang::alvm::OpCode::Jl:
                             std::cout << " $0x" << inst.imm64;
+                            break;
+                        default:
                             break;
                     }
                 }
