@@ -39,8 +39,14 @@ Options:
 Command format: =alvm [file]=
 Execute the bytecode.
 
-** Plans
-- Write few simple terminal games in ALVM assembly.
-- Write very basic C compiler that compiles to ALVM bytecode.
-- Compile ALVM bytecode to machine code by first generating x86 AT&T assembly and then compiling it with GCC to machine.
-- Create a scripting language that compiles to ALVM bytecode.
+** TODO:
+- [ ]: Write a few basic terminal based games in ALASM.
+  - [ ]: Snake
+  - [ ]: Tetris
+- [ ]: Write a basic C Compiler In Rust which will compile to ALASM.
+  - [x]: Create the Rust sub-project and integrate it with ALVM's buildsystem.
+  - [ ]: Write the Lexer.
+  - [ ]: Write the Linguistic Analyzer (Parser).
+  - [ ]: Write the Code Generator.
+- [ ]: Compile ALVM bytecode to architecture specific machine code.
+- [ ]: Write a basic compiler for a JS like scripting langauge that compiles to ALASM.
