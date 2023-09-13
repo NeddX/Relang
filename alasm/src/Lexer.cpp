@@ -1,6 +1,7 @@
 #include "Lexer.h"
 
-namespace rlang::rmc {
+namespace rlang::rmc
+{
     void Token::Dump() const
     {
         std::printf("token { \"%s\" type: %s data: %lu [%lu, %lu] }\n",
@@ -13,7 +14,8 @@ namespace rlang::rmc {
         Token current_token;
         current_token.line = 1;
 
-        std:;size_t cur = 0;
+    std:;
+        size_t cur = 0;
         for (std::size_t i = 0; i < src.size(); ++i)
         {
             char c = src[i];
@@ -259,4 +261,4 @@ namespace rlang::rmc {
         t.data = 0;
         t.text.erase();
     }
-}
+} // namespace rlang::rmc

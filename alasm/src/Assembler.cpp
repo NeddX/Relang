@@ -4,8 +4,8 @@
 
 #ifdef __clang__
 #define DISABLE_ENUM_WARNING_BEGIN _Pragma("clang diagnostic push") \
-                                   _Pragma("clang diagnostic ignored \"-Wswitch\"")
-#define DISABLE_ENUM_WARNING_END   _Pragma("clang diagnostic pop")
+    _Pragma("clang diagnostic ignored \"-Wswitch\"")
+#define DISABLE_ENUM_WARNING_END _Pragma("clang diagnostic pop")
 #else
 #define DISABLE_ENUM_WARNING_BEGIN
 #define DISABLE_ENUM_WARNING_END
@@ -13,9 +13,9 @@
 
 DISABLE_ENUM_WARNING_BEGIN
 
-#define ASSEMBLE_ERROR(token, msg)                                       \
+#define ASSEMBLE_ERROR(token, msg)                                                    \
     std::cerr << "Compile Error @ line (" << token.line << ", " << token.cur << "): " \
-    << msg << "\n";                                                     \
+              << msg << "\n";                                                         \
     return AssemblerStatus::AssembleError
 
 static constexpr inline std::uint8_t SizeOfDataTypeB(rlang::rmc::DataType type)
@@ -108,7 +108,7 @@ namespace rlang::rmc {
                         // Label definition.
                         if (tokens[i + 2].type == TokenType::Operator && tokens[i + 2].text == ":")
                         {
-                            m_LabelAddressMap[tokens[i + 1].text] = { inst_count + 1, { } };
+                            m_LabelAddressMap[tokens[i + 1].text] = {inst_count + 1, {}};
                             last_label_definition = tokens[i + 1].text;
                             i += 2;
                         }
@@ -221,16 +221,16 @@ namespace rlang::rmc {
                                     if (m_SymbolTable.find(tokens[i + 1].text) != m_SymbolTable.end())
                                     {
                                         ASSEMBLE_ERROR(tokens[i + 1],
-                                                      "Attempted to redefine '" << tokens[i + 1].text << "'.");
+                                                       "Attempted to redefine '" << tokens[i + 1].text << "'.");
                                     }
 
                                     DataInfo inf =
-                                    {
-                                        .addr = m_DataSection.size(),
-                                        .size = 0,
-                                        .value = (std::uint64_t)m_DataSection.size(),
-                                        .initialized = true,
-                                    };
+                                        {
+                                            .addr = m_DataSection.size(),
+                                            .size = 0,
+                                            .value = (std::uint64_t)m_DataSection.size(),
+                                            .initialized = true,
+                                        };
 
                                     i += 2;
                                     bool run = true;
@@ -244,7 +244,7 @@ namespace rlang::rmc {
                                                 case TokenType::StringLiteral:
                                                     m_DataSection.insert(m_DataSection.end(), tokens[i].text.begin(), tokens[i].text.end());
                                                     inf.size += tokens[i].text.size();
-                                                        break;
+                                                    break;
                                                 case TokenType::Immediate:
                                                 case TokenType::Displacement:
                                                     m_DataSection.resize(m_DataSection.size() + 1);
@@ -268,7 +268,7 @@ namespace rlang::rmc {
                                                     }
                                                     break;
                                                 default:
-byte_def_case:
+                                                byte_def_case:
                                                     if (tokens[i].type == TokenType::Identifier &&
                                                         tokens[i++].text == "fill")
                                                     {
@@ -276,9 +276,9 @@ byte_def_case:
                                                             tokens[i++].text == "(")
                                                         {
                                                             if ((tokens[i].type != TokenType::Immediate &&
-                                                                tokens[i].type != TokenType::Displacement) ||
+                                                                 tokens[i].type != TokenType::Displacement) ||
                                                                 (tokens[i + 2].type != TokenType::Immediate &&
-                                                                tokens[i + 2].type != TokenType::Displacement))
+                                                                 tokens[i + 2].type != TokenType::Displacement))
                                                             {
                                                                 ASSEMBLE_ERROR(tokens[i], "fill function expects two number literals.");
                                                             }
@@ -315,8 +315,10 @@ byte_def_case:
                                                     }
                                                     break;
                                             }
-                                            if (run) ++i;
-                                            else --i;
+                                            if (run)
+                                                ++i;
+                                            else
+                                                --i;
                                         }
                                     }
                                     else if (inst == "word")
@@ -352,7 +354,7 @@ byte_def_case:
                                                     }
                                                     break;
                                                 default:
-word_def_case:
+                                                word_def_case:
                                                     if (tokens[i].type == TokenType::Identifier &&
                                                         tokens[i++].text == "fill")
                                                     {
@@ -360,9 +362,9 @@ word_def_case:
                                                             tokens[i++].text == "(")
                                                         {
                                                             if ((tokens[i].type != TokenType::Immediate &&
-                                                                tokens[i].type != TokenType::Displacement) ||
+                                                                 tokens[i].type != TokenType::Displacement) ||
                                                                 (tokens[i + 2].type != TokenType::Immediate &&
-                                                                tokens[i + 2].type != TokenType::Displacement))
+                                                                 tokens[i + 2].type != TokenType::Displacement))
                                                             {
                                                                 ASSEMBLE_ERROR(tokens[i], "fill function expects two number literals.");
                                                             }
@@ -384,8 +386,7 @@ word_def_case:
                                                             m_DataSection.resize(inf.addr + size * 2);
                                                             for (auto x = 0; x < size; ++x)
                                                             {
-                                                                *((std::uint16_t*)(std::uintptr_t)(m_DataSection.data() + inf.addr + (x * 2)))
-                                                                    = value;
+                                                                *((std::uint16_t*)(std::uintptr_t)(m_DataSection.data() + inf.addr + (x * 2))) = value;
                                                             }
                                                             inf.size += size * 2;
                                                             i += 3;
@@ -402,8 +403,10 @@ word_def_case:
                                                     }
                                                     break;
                                             }
-                                            if (run) ++i;
-                                            else --i;
+                                            if (run)
+                                                ++i;
+                                            else
+                                                --i;
                                         }
                                     }
                                     else if (inst == "dword")
@@ -439,7 +442,7 @@ word_def_case:
                                                     }
                                                     break;
                                                 default:
-dword_def_case:
+                                                dword_def_case:
                                                     if (tokens[i].type == TokenType::Identifier &&
                                                         tokens[i++].text == "fill")
                                                     {
@@ -447,9 +450,9 @@ dword_def_case:
                                                             tokens[i++].text == "(")
                                                         {
                                                             if ((tokens[i].type != TokenType::Immediate &&
-                                                                tokens[i].type != TokenType::Displacement) ||
+                                                                 tokens[i].type != TokenType::Displacement) ||
                                                                 (tokens[i + 2].type != TokenType::Immediate &&
-                                                                tokens[i + 2].type != TokenType::Displacement))
+                                                                 tokens[i + 2].type != TokenType::Displacement))
                                                             {
                                                                 ASSEMBLE_ERROR(tokens[i], "fill function expects two number literals.");
                                                             }
@@ -471,8 +474,7 @@ dword_def_case:
                                                             m_DataSection.resize(inf.addr + size * 4);
                                                             for (auto x = 0; x < size; ++x)
                                                             {
-                                                                *((std::uint32_t*)(std::uintptr_t)(m_DataSection.data() + inf.addr + (x * 4)))
-                                                                    = value;
+                                                                *((std::uint32_t*)(std::uintptr_t)(m_DataSection.data() + inf.addr + (x * 4))) = value;
                                                             }
                                                             inf.size += size * 4;
                                                             i += 3;
@@ -489,8 +491,10 @@ dword_def_case:
                                                     }
                                                     break;
                                             }
-                                            if (run) ++i;
-                                            else --i;
+                                            if (run)
+                                                ++i;
+                                            else
+                                                --i;
                                         }
                                     }
                                     else if (inst == "qword")
@@ -527,7 +531,7 @@ dword_def_case:
                                                     }
                                                     break;
                                                 default:
-qword_def_case:
+                                                qword_def_case:
                                                     if (tokens[i].type == TokenType::Identifier &&
                                                         tokens[i++].text == "fill")
                                                     {
@@ -535,9 +539,9 @@ qword_def_case:
                                                             tokens[i++].text == "(")
                                                         {
                                                             if ((tokens[i].type != TokenType::Immediate &&
-                                                                tokens[i].type != TokenType::Displacement) ||
+                                                                 tokens[i].type != TokenType::Displacement) ||
                                                                 (tokens[i + 2].type != TokenType::Immediate &&
-                                                                tokens[i + 2].type != TokenType::Displacement))
+                                                                 tokens[i + 2].type != TokenType::Displacement))
                                                             {
                                                                 ASSEMBLE_ERROR(tokens[i], "fill function expects two number literals.");
                                                             }
@@ -559,8 +563,7 @@ qword_def_case:
                                                             m_DataSection.resize(inf.addr + size * 8);
                                                             for (auto x = 0; x < size; ++x)
                                                             {
-                                                                *((std::uint64_t*)(std::uintptr_t)(m_DataSection.data() + inf.addr + (x * 8)))
-                                                                    = value;
+                                                                *((std::uint64_t*)(std::uintptr_t)(m_DataSection.data() + inf.addr + (x * 8))) = value;
                                                             }
                                                             inf.size += size * 8;
                                                             i += 3;
@@ -577,8 +580,10 @@ qword_def_case:
                                                     }
                                                     break;
                                             }
-                                            if (run) ++i;
-                                            else --i;
+                                            if (run)
+                                                ++i;
+                                            else
+                                                --i;
                                         }
                                     }
                                 }
@@ -607,12 +612,11 @@ qword_def_case:
                                         tokens[i + 2].type == TokenType::Displacement)
                                     {
                                         m_SymbolTable[tokens[i + 1].text] =
-                                        {
-                                            .size = 4,
-                                            .value = std::stoull(tokens[i + 2].text),
-                                            .constant = true,
-                                            .type = DataType::QWord
-                                        };
+                                            {
+                                                .size = 4,
+                                                .value = std::stoull(tokens[i + 2].text),
+                                                .constant = true,
+                                                .type = DataType::QWord};
                                     }
                                     else
                                     {
@@ -621,7 +625,7 @@ qword_def_case:
                                 }
                                 else
                                 {
-                                   ASSEMBLE_ERROR(tokens[i], "Expected an Identifier after const declaration.");
+                                    ASSEMBLE_ERROR(tokens[i], "Expected an Identifier after const declaration.");
                                 }
                                 i += 2;
                             }
@@ -636,50 +640,50 @@ qword_def_case:
                             {
                                 if (tokens[i + 1].type == TokenType::Identifier)
                                 {
-                                   if (m_SymbolTable.find(tokens[i + 1].text) != m_SymbolTable.end())
-                                   {
+                                    if (m_SymbolTable.find(tokens[i + 1].text) != m_SymbolTable.end())
+                                    {
                                         ASSEMBLE_ERROR(tokens[i + 1], "Attempted to redefine '" << tokens[i + 1].text << "'.");
-                                   }
+                                    }
 
-                                   DataInfo inf =
-                                   {
-                                        .addr = m_DataSection.size() + m_BssSize,
-                                        .size = 0,
-                                        .value = 0,
-                                        .initialized = false,
-                                   };
+                                    DataInfo inf =
+                                        {
+                                            .addr = m_DataSection.size() + m_BssSize,
+                                            .size = 0,
+                                            .value = 0,
+                                            .initialized = false,
+                                        };
 
-                                   i += 2;
-                                   if (tokens[i].type != TokenType::Displacement &&
-                                       tokens[i].type != TokenType::Immediate)
-                                   {
+                                    i += 2;
+                                    if (tokens[i].type != TokenType::Displacement &&
+                                        tokens[i].type != TokenType::Immediate)
+                                    {
                                         ASSEMBLE_ERROR(tokens[i], "Expected a number.");
-                                   }
+                                    }
 
-                                   if (inst == "byte")
-                                   {
+                                    if (inst == "byte")
+                                    {
                                         inf.type = DataType::Byte;
-                                   }
-                                   else if (inst == "word")
-                                   {
+                                    }
+                                    else if (inst == "word")
+                                    {
                                         inf.type = DataType::Word;
-                                   }
-                                   else if (inst == "dword")
-                                   {
+                                    }
+                                    else if (inst == "dword")
+                                    {
                                         inf.type = DataType::DWord;
-                                   }
-                                   else if (inst == "qword")
-                                   {
+                                    }
+                                    else if (inst == "qword")
+                                    {
                                         inf.type = DataType::QWord;
-                                   }
-                                   inf.size = SizeOfDataTypeB(inf.type) * std::stoull(tokens[i].text);
-                                   m_BssSize += inf.size;
-                                   m_SymbolTable[tokens[inst_token_id + 1].text] = inf;
-                                   break;
+                                    }
+                                    inf.size = SizeOfDataTypeB(inf.type) * std::stoull(tokens[i].text);
+                                    m_BssSize += inf.size;
+                                    m_SymbolTable[tokens[inst_token_id + 1].text] = inf;
+                                    break;
                                 }
                                 else
                                 {
-                                   ASSEMBLE_ERROR(tokens[i + 1], "Expected an identifier.");
+                                    ASSEMBLE_ERROR(tokens[i + 1], "Expected an identifier.");
                                 }
                             }
                         }
@@ -774,7 +778,7 @@ qword_def_case:
                                     }
                                     break;
                             }
-ok_instruction_case:
+                        ok_instruction_case:
                             m_AssembledCode.push_back(current_instruction);
                         }
                         if (!m_InstEpilogue.empty())
@@ -784,7 +788,7 @@ ok_instruction_case:
                         }
                     }
                     inst_token_id = i;
-                    current_instruction = alvm::Instruction {  };
+                    current_instruction = alvm::Instruction{};
                     operand_count = -1;
                     ptr = alvm::RegType::NUL;
 
@@ -863,7 +867,8 @@ ok_instruction_case:
                         {
                             ASSEMBLE_ERROR(tokens[i + 1], "Undefined Identifier '" << tokens[i + 1].text << "'.");
                         }
-                        if (operand_count <= -1) operand_count++;
+                        if (operand_count <= -1)
+                            operand_count++;
                     }
                     else if (tokens[i].text == "+")
                     {
@@ -921,7 +926,8 @@ ok_instruction_case:
                     }
                     else if (tokens[i].text == "(")
                     {
-                        if (operand_count <= -1) operand_count++;
+                        if (operand_count <= -1)
+                            operand_count++;
 
                         i++;
                         ptr = alvm::RegType::PTR;
@@ -970,7 +976,6 @@ ok_instruction_case:
                                 // TODO: CONTINUE
                             }
                             sub_op_counter++;
-
                         }
                         if (tokens[i].text != ")" && tokens[i++].type != TokenType::Operator)
                         {
@@ -985,7 +990,6 @@ ok_instruction_case:
                     {
                         operand_count++;
                         ptr = alvm::RegType::NUL;
-
                     }
                     else if (tokens[i].text == "@")
                     {
@@ -993,7 +997,8 @@ ok_instruction_case:
                         if (tokens[i + 1].type == TokenType::Identifier &&
                             tokens[i + 2].text != ":")
                         {
-                            if (operand_count <= -1) operand_count++;
+                            if (operand_count <= -1)
+                                operand_count++;
 
                             if (m_LabelAddressMap.find(tokens[i + 1].text) != m_LabelAddressMap.end())
                             {
@@ -1045,7 +1050,6 @@ ok_instruction_case:
                             tokens[i + 3].type == TokenType::Operator &&
                             tokens[i + 3].text == ":")
                         {
-
                             // Section definition
                             if (tokens[i + 2].text == "data")
                             {
@@ -1073,9 +1077,9 @@ ok_instruction_case:
                             // Possible local label reference
                             if (tokens[i + 2].type != TokenType::Operator || tokens[i + 2].text != ":")
                             {
-                                if  (m_LabelAddressMap.find(current_label) != m_LabelAddressMap.end() &&
-                                     m_LabelAddressMap[current_label].second.find(tokens[i + 1].text) !=
-                                     m_LabelAddressMap[current_label].second.end())
+                                if (m_LabelAddressMap.find(current_label) != m_LabelAddressMap.end() &&
+                                    m_LabelAddressMap[current_label].second.find(tokens[i + 1].text) !=
+                                        m_LabelAddressMap[current_label].second.end())
                                 {
                                     operand_count++;
                                     current_instruction.imm64 = (std::uint64_t)m_LabelAddressMap[current_label].second[tokens[i + 1].text];
@@ -1117,19 +1121,20 @@ ok_instruction_case:
                 }
                 case TokenType::Immediate:
                 {
-                    if (operand_count <= -1) operand_count++;
+                    if (operand_count <= -1)
+                        operand_count++;
 
                     switch (current_instruction.opcode)
                     {
                         case alvm::OpCode::GetChar:
                             ASSEMBLE_ERROR(tokens[inst_token_id], "Instruction doesn't accept a number literal as an operand."
-                                          << "\nRefer to its encoding for correct usage.");
+                                                                      << "\nRefer to its encoding for correct usage.");
                             break;
                         case alvm::OpCode::Load:
                             if (operand_count == 0)
                             {
                                 ASSEMBLE_ERROR(tokens[inst_token_id], "Instruction doesn't accept a number literal as its source operand."
-                                              << "\nRefer to its encoding for correct usage.");
+                                                                          << "\nRefer to its encoding for correct usage.");
                             }
                             break;
                         case alvm::OpCode::Store:
@@ -1151,7 +1156,7 @@ ok_instruction_case:
                             if (operand_count > 0)
                             {
                                 ASSEMBLE_ERROR(tokens[inst_token_id], "Instruction doesn't accept a number literal as its destination operand."
-                                              << "\nRefer to its encoding for correct usage.");
+                                                                          << "\nRefer to its encoding for correct usage.");
                             }
                             break;
                     }
@@ -1161,7 +1166,8 @@ ok_instruction_case:
                 }
                 case TokenType::Identifier:
                 {
-                    if (operand_count <= -1) operand_count++;
+                    if (operand_count <= -1)
+                        operand_count++;
 
                     if (tokens[i].text == "typeof")
                     {
@@ -1419,39 +1425,42 @@ ok_instruction_case:
             m_InstEpilogue.clear();
         }
 
-        m_AssembledCode.push_back(alvm::Instruction { .opcode = alvm::OpCode::End });
+        m_AssembledCode.push_back(alvm::Instruction{.opcode = alvm::OpCode::End});
         return AssemblerStatus::Ok;
     }
 
     alvm::OpCode Assembler::GetInst(std::string inst)
     {
-        std::for_each(inst.begin(), inst.end(), [](char& c) { c = std::tolower(c); });
+        std::for_each(inst.begin(), inst.end(), [](char& c)
+                      { c = std::tolower(c); });
         auto it = std::find_if(alvm::Instruction::InstructionStr.begin(), alvm::Instruction::InstructionStr.end(),
-            [&inst](std::string str)
-            {
-                std::for_each(str.begin(), str.end(), [](char& c) { c = std::tolower(c); });
-                return str == inst;
-            });
+                               [&inst](std::string str)
+                               {
+                                   std::for_each(str.begin(), str.end(), [](char& c)
+                                                 { c = std::tolower(c); });
+                                   return str == inst;
+                               });
 
         return (it != alvm::Instruction::InstructionStr.end())
-            ? (alvm::OpCode)std::distance(alvm::Instruction::InstructionStr.begin(), it)
-            : alvm::OpCode::Nop;
+                   ? (alvm::OpCode)std::distance(alvm::Instruction::InstructionStr.begin(), it)
+                   : alvm::OpCode::Nop;
     }
 
     alvm::RegType Assembler::GetReg(std::string reg)
     {
-        std::for_each(reg.begin(), reg.end(), [](char& c) { c = std::tolower(c); });
+        std::for_each(reg.begin(), reg.end(), [](char& c)
+                      { c = std::tolower(c); });
         auto it = std::find_if(alvm::Register::RegisterStr.begin(), alvm::Register::RegisterStr.end(),
-            [&reg](std::string str)
-            {
-                std::for_each(str.begin(), str.end(), [](char& c) { c = std::tolower(c); });
-                return str == reg;
-            });
-        return 
-            (it != alvm::Register::RegisterStr.end()) 
-            ? (alvm::RegType)std::distance(alvm::Register::RegisterStr.begin(), it) 
-            : alvm::RegType::NUL;
+                               [&reg](std::string str)
+                               {
+                                   std::for_each(str.begin(), str.end(), [](char& c)
+                                                 { c = std::tolower(c); });
+                                   return str == reg;
+                               });
+        return (it != alvm::Register::RegisterStr.end())
+                   ? (alvm::RegType)std::distance(alvm::Register::RegisterStr.begin(), it)
+                   : alvm::RegType::NUL;
     }
-}
+} // namespace rlang::rmc
 
 DISABLE_ENUM_WARNING_END
