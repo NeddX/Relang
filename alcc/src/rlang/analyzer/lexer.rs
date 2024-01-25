@@ -1,5 +1,5 @@
 #[derive(Debug)]
-pub enum TokenType {
+pub enum TokenKind {
     None,
     NumberLiteral(i64),
 
@@ -28,9 +28,9 @@ pub enum TokenType {
 
 #[derive(Debug)]
 pub struct TextSpan {
-    start: usize,
-    end: usize,
-    text: String,
+    pub(crate) start: usize,
+    pub(crate) end: usize,
+    pub(crate) text: String,
 }
 
 impl TextSpan {
@@ -45,13 +45,16 @@ impl TextSpan {
 
 #[derive(Debug)]
 pub struct Token {
-    token_type: TokenType,
-    span: TextSpan,
+    pub(crate) kind: TokenKind,
+    pub(crate) span: TextSpan,
 }
 
 impl Token {
-    pub fn new(token_type: TokenType, span: TextSpan) -> Self {
-        Self { token_type, span }
+    pub fn new(token_kind: TokenKind, span: TextSpan) -> Self {
+        Self {
+            kind: token_kind,
+            span,
+        }
     }
 }
 
@@ -85,7 +88,7 @@ impl<'a> Lexer<'a> {
             let eof: char = '\0';
             self.current_pos += 1;
             return Some(Token::new(
-                TokenType::EOF,
+                TokenKind::EOF,
                 TextSpan::new(0, 0, eof.to_string()),
             ));
         }
@@ -93,18 +96,18 @@ impl<'a> Lexer<'a> {
         let c_opt = self.current_char();
         c_opt.map(|c| {
             let start = self.current_pos;
-            let mut token_type = TokenType::None;
+            let mut token_kind = TokenKind::None;
             if Self::is_number_start(&c) {
                 let num: i64 = self.consume_number();
-                token_type = TokenType::NumberLiteral(num);
+                token_kind = TokenKind::NumberLiteral(num);
             } else {
-                token_type = self.consume_operator();
+                token_kind = self.consume_operator();
             }
 
             let end = self.current_pos;
             let text = self.source[start..end].to_string();
             let span = TextSpan::new(start, end, text);
-            Token::new(token_type, span)
+            Token::new(token_kind, span)
         })
     }
 
@@ -140,28 +143,28 @@ impl<'a> Lexer<'a> {
         num
     }
 
-    fn consume_operator(&mut self) -> TokenType {
+    fn consume_operator(&mut self) -> TokenKind {
         let c = self.consume().unwrap();
         match c {
-            '+' => TokenType::Plus,
-            '-' => TokenType::Minus,
-            '/' => TokenType::ForwardSlash,
-            '*' => TokenType::Asterisk,
-            '(' => TokenType::LeftParen,
-            ')' => TokenType::RightParen,
-            '{' => TokenType::LeftBracket,
-            '}' => TokenType::RightBracket,
-            '[' => TokenType::LeftSquareBracket,
-            ']' => TokenType::RightSquareBracket,
-            '<' => TokenType::LeftAngleBracket,
-            '>' => TokenType::RightAngleBracket,
-            ',' => TokenType::Comma,
-            '"' => TokenType::DoubleQuote,
-            '\'' => TokenType::SingleQuote,
-            ':' => TokenType::Colon,
-            ';' => TokenType::SemiColon,
-            '=' => TokenType::Equal,
-            _ => TokenType::None,
+            '+' => TokenKind::Plus,
+            '-' => TokenKind::Minus,
+            '/' => TokenKind::ForwardSlash,
+            '*' => TokenKind::Asterisk,
+            '(' => TokenKind::LeftParen,
+            ')' => TokenKind::RightParen,
+            '{' => TokenKind::LeftBracket,
+            '}' => TokenKind::RightBracket,
+            '[' => TokenKind::LeftSquareBracket,
+            ']' => TokenKind::RightSquareBracket,
+            '<' => TokenKind::LeftAngleBracket,
+            '>' => TokenKind::RightAngleBracket,
+            ',' => TokenKind::Comma,
+            '"' => TokenKind::DoubleQuote,
+            '\'' => TokenKind::SingleQuote,
+            ':' => TokenKind::Colon,
+            ';' => TokenKind::SemiColon,
+            '=' => TokenKind::Equal,
+            _ => TokenKind::None,
         }
     }
 }
