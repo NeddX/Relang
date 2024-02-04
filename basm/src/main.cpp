@@ -27,7 +27,7 @@ void DumpIntermediate(const relang::blend::InstructionList& code, const std::opt
                          inst.imm64,
                          inst.sreg,
                          inst.dreg,
-                         inst.displacement,
+                         inst.disp,
                          inst.src_reg,
                          inst.size,
                          relang::blend::Instruction::InstructionStr[(usize)inst.opcode].c_str());
@@ -56,9 +56,9 @@ void DumpIntermediate(const relang::blend::InstructionList& code, const std::opt
                     if (inst.sreg & relang::blend::RegType::PTR)
                     {
                         fs << " ";
-                        if (inst.displacement != 0)
+                        if (inst.disp != 0)
                         {
-                            fs << std::hex << ((inst.displacement < 0) ? "-0x" : "+0x") << std::abs(inst.displacement);
+                            fs << std::hex << ((inst.disp < 0) ? "-0x" : "+0x") << std::abs(inst.disp);
                         }
                         fs << "(%"
                            << relang::blend::Register::RegisterStr[(usize)(inst.sreg & relang::blend::RegType::DPTR)];
@@ -83,9 +83,9 @@ void DumpIntermediate(const relang::blend::InstructionList& code, const std::opt
                 if (inst.dreg & relang::blend::RegType::PTR)
                 {
                     fs << " ";
-                    if (inst.displacement != 0)
+                    if (inst.disp != 0)
                     {
-                        fs << std::hex << ((inst.displacement < 0) ? "-0x" : "+0x") << std::abs(inst.displacement);
+                        fs << std::hex << ((inst.disp < 0) ? "-0x" : "+0x") << std::abs(inst.disp);
                     }
                     fs << "(%"
                        << relang::blend::Register::RegisterStr[(usize)(inst.dreg & relang::blend::RegType::DPTR)];
@@ -107,9 +107,9 @@ void DumpIntermediate(const relang::blend::InstructionList& code, const std::opt
                     if (inst.sreg & relang::blend::RegType::PTR)
                     {
                         fs << " ";
-                        if (inst.displacement != 0)
+                        if (inst.disp != 0)
                         {
-                            fs << std::hex << ((inst.displacement < 0) ? "-0x" : "+0x") << std::abs(inst.displacement);
+                            fs << std::hex << ((inst.disp < 0) ? "-0x" : "+0x") << std::abs(inst.disp);
                         }
                         fs << "(%"
                            << relang::blend::Register::RegisterStr[(usize)(inst.sreg & relang::blend::RegType::DPTR)];
@@ -168,7 +168,7 @@ void DumpIntermediate(const relang::blend::InstructionList& code, const std::opt
                         inst.imm64,
                         inst.sreg,
                         inst.dreg,
-                        inst.displacement,
+                        inst.disp,
                         inst.src_reg,
                         inst.size,
                         relang::blend::Instruction::InstructionStr[(usize)inst.opcode].c_str());
@@ -196,9 +196,9 @@ void DumpIntermediate(const relang::blend::InstructionList& code, const std::opt
                     if (inst.sreg & relang::blend::RegType::PTR)
                     {
                         std::cout << " ";
-                        if (inst.displacement != 0)
+                        if (inst.disp != 0)
                         {
-                            std::cout << std::hex << ((inst.displacement < 0) ? "-0x" : "+0x") << std::abs(inst.displacement);
+                            std::cout << std::hex << ((inst.disp < 0) ? "-0x" : "+0x") << std::abs(inst.disp);
                         }
                         std::cout << "(%"
                            << relang::blend::Register::RegisterStr[(usize)(inst.sreg & relang::blend::RegType::DPTR)];
@@ -223,9 +223,9 @@ void DumpIntermediate(const relang::blend::InstructionList& code, const std::opt
                 if (inst.dreg & relang::blend::RegType::PTR)
                 {
                     std::cout << " ";
-                    if (inst.displacement != 0)
+                    if (inst.disp != 0)
                     {
-                        std::cout << std::hex << ((inst.displacement < 0) ? "-0x" : "+0x") << std::abs(inst.displacement);
+                        std::cout << std::hex << ((inst.disp < 0) ? "-0x" : "+0x") << std::abs(inst.disp);
                     }
                     std::cout << "(%"
                        << relang::blend::Register::RegisterStr[(usize)(inst.dreg & relang::blend::RegType::DPTR)];
@@ -247,9 +247,9 @@ void DumpIntermediate(const relang::blend::InstructionList& code, const std::opt
                     if (inst.sreg & relang::blend::RegType::PTR)
                     {
                         std::cout << " ";
-                        if (inst.displacement != 0)
+                        if (inst.disp != 0)
                         {
-                            std::cout << std::hex << ((inst.displacement < 0) ? "-0x" : "+0x") << std::abs(inst.displacement);
+                            std::cout << std::hex << ((inst.disp < 0) ? "-0x" : "+0x") << std::abs(inst.disp);
                         }
                         std::cout << "(%"
                            << relang::blend::Register::RegisterStr[(usize)(inst.sreg & relang::blend::RegType::DPTR)];
@@ -304,7 +304,7 @@ void DumpIntermediate(const relang::blend::InstructionList& code, const std::opt
 int main(const int argc, const char* argv[])
 {
     using namespace relang;
-    using namespace relang::rmc;
+    using namespace relang::basm;
 
     std::string output_filepath;
     std::string input_filepath;
@@ -382,7 +382,7 @@ int main(const int argc, const char* argv[])
                 return EXIT_SUCCESS;
             }
             std::string src_code = std::string(std::istreambuf_iterator<char>(fs), std::istreambuf_iterator<char>());
-            auto tk_list = relang::rmc::Lexer::Start(src_code);
+            auto tk_list = relang::basm::Lexer::Start(src_code);
             AssemblerOptions opt =
             {
                     .type = OutputType::XBin,

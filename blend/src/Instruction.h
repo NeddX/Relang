@@ -103,7 +103,7 @@ namespace relang::blend {
         u64 imm64 = 0;
         RegType sreg = RegType::NUL;
         RegType dreg = RegType::NUL;
-        i32 displacement = 0;
+        i32 disp = 0;
         RegType src_reg = RegType::NUL;
         i8 size = 64;
 

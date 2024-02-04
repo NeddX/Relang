@@ -3,7 +3,7 @@
 
 #include <sdafx.h>
 
-namespace relang::rmc::utils {
+namespace relang::basm::utils {
 	namespace string {
 		inline std::vector<u8> ToBytes(std::string&& str)
 		{

@@ -18,41 +18,26 @@ DISABLE_ENUM_WARNING_BEGIN
               << msg << "\n";                                                         \
     return AssemblerStatus::AssembleError
 
-static constexpr inline relang::u8 SizeOfDataTypeB(relang::rmc::DataType type)
+static constexpr inline relang::u8 SizeOfDataType(relang::basm::DataType type)
 {
     switch (type)
     {
-        case relang::rmc::Byte:
-            return 1;
-        case relang::rmc::Word:
-            return 2;
-        case relang::rmc::DWord:
-            return 4;
-        case relang::rmc::QWord:
-            return 8;
-        default:
-            return 0;
-    }
-}
+        using enum relang::basm::DataType;
 
-static constexpr inline relang::u8 SizeOfDataType(relang::rmc::DataType type)
-{
-    switch (type)
-    {
-        case relang::rmc::Byte:
+        case Byte:
             return 8;
-        case relang::rmc::Word:
+        case Word:
             return 16;
-        case relang::rmc::DWord:
+        case DWord:
             return 32;
-        case relang::rmc::QWord:
+        case QWord:
             return 64;
         default:
             return 0;
     }
 }
 
-namespace relang::rmc {
+namespace relang::basm {
     std::unordered_map<std::string, DataInfo> Assembler::m_SymbolTable;
     std::unordered_map<std::string, std::pair<usize, std::unordered_map<std::string, usize>>> Assembler::m_LabelAddressMap;
     std::vector<blend::Instruction> Assembler::m_AssembledCode;
@@ -676,7 +661,7 @@ namespace relang::rmc {
                                     {
                                         inf.type = DataType::QWord;
                                     }
-                                    inf.size = SizeOfDataTypeB(inf.type) * std::stoull(tokens[i].text);
+                                    inf.size = (SizeOfDataType(inf.type) / 8) * std::stoull(tokens[i].text);
                                     m_BssSize += inf.size;
                                     m_SymbolTable[tokens[inst_token_id + 1].text] = inf;
                                     break;
@@ -838,7 +823,7 @@ namespace relang::rmc {
                     {
                         // Displacer...
                         ptr = blend::RegType::PTR;
-                        current_instruction.displacement = (i32)std::stoull(tokens[i].text);
+                        current_instruction.disp = (i32)std::stoull(tokens[i].text);
                     }
                     break;
                 }
@@ -880,7 +865,7 @@ namespace relang::rmc {
                                 auto it = m_SymbolTable.find(tokens[i - 1].text);
                                 if (it != m_SymbolTable.end())
                                 {
-                                    current_instruction.displacement += (i32)std::stoull(tokens[i + 1].text);
+                                    current_instruction.disp += (i32)std::stoull(tokens[i + 1].text);
                                 }
                                 else
                                 {
@@ -907,7 +892,7 @@ namespace relang::rmc {
                                 auto it = m_SymbolTable.find(tokens[i - 1].text);
                                 if (it != m_SymbolTable.end())
                                 {
-                                    current_instruction.displacement -= (i32)std::stoull(tokens[i + 1].text);
+                                    current_instruction.disp -= (i32)std::stoull(tokens[i + 1].text);
                                 }
                                 else
                                 {
@@ -1184,7 +1169,7 @@ namespace relang::rmc {
                                 ASSEMBLE_ERROR(tokens[i], "'" << tokens[i].text << "' doesn't exist in the current context.");
                             }
 
-                            current_instruction.imm64 = SizeOfDataTypeB(it->second.type);
+                            current_instruction.imm64 = SizeOfDataType(it->second.type) / 8;
                         }
                     }
                     else if (tokens[i].text == "sizeof")
@@ -1220,7 +1205,7 @@ namespace relang::rmc {
                                 ASSEMBLE_ERROR(tokens[i], "'" << tokens[i].text << "' doesn't exist in the current context.");
                             }
 
-                            current_instruction.imm64 = it->second.size / SizeOfDataTypeB(it->second.type);
+                            current_instruction.imm64 = it->second.size / (SizeOfDataType(it->second.type) / 8);
                         }
                     }
                     else if (tokens[i].text == "offsetof")
@@ -1263,7 +1248,7 @@ namespace relang::rmc {
                                     if (it->second.type == DataType::Byte)
                                     {
                                         current_instruction.sreg = (blend::RegType)(blend::RegType::DS | 0x80);
-                                        current_instruction.displacement = (i64)it->second.addr;
+                                        current_instruction.disp = (i64)it->second.addr;
                                     }
                                     else
                                     {
@@ -1314,7 +1299,7 @@ namespace relang::rmc {
                                         if (operand_count == 0)
                                         {
                                             current_instruction.sreg = (blend::RegType)(blend::RegType::DS | 0x80);
-                                            current_instruction.displacement = (i64)it->second.addr;
+                                            current_instruction.disp = (i64)it->second.addr;
                                         }
                                         else
                                         {
@@ -1343,7 +1328,7 @@ namespace relang::rmc {
                                         if (operand_count >= 0)
                                         {
                                             current_instruction.dreg = (blend::RegType)(blend::RegType::DS | 0x80);
-                                            current_instruction.displacement = (i64)it->second.addr;
+                                            current_instruction.disp = (i64)it->second.addr;
                                         }
                                         else
                                         {
@@ -1394,7 +1379,7 @@ namespace relang::rmc {
                                         else
                                         {
                                             current_instruction.sreg = (blend::RegType)(blend::RegType::DS | 0x80);
-                                            current_instruction.displacement = (i64)it->second.addr;
+                                            current_instruction.disp = (i64)it->second.addr;
                                         }
                                     }
                                     else

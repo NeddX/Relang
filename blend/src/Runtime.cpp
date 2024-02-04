@@ -360,8 +360,8 @@ namespace relang::blend {
         // sfmt_ptr, args_ptr
         usize total_size = 0;
         usize last_occurence = 0;
-        const usize size = std::strlen((const char*)m_Registers[m_Pc->sreg] + m_Pc->displacement + m_Registers[m_Pc->src_reg]) + 1;
-        const unsigned char* format_str = (const unsigned char*)m_Registers[m_Pc->sreg] + m_Pc->displacement + m_Registers[m_Pc->src_reg];
+        const usize size = std::strlen((const char*)m_Registers[m_Pc->sreg] + m_Pc->disp + m_Registers[m_Pc->src_reg]) + 1;
+        const unsigned char* format_str = (const unsigned char*)m_Registers[m_Pc->sreg] + m_Pc->disp + m_Registers[m_Pc->src_reg];
 
         for (auto i = 0; i < size; ++i)
         {
@@ -522,7 +522,7 @@ namespace relang::blend {
     void Blend::Lea()
     {
         // r, m
-        m_Registers[m_Pc->dreg] = m_Registers[RegDeref(m_Pc->sreg)] + m_Pc->displacement + m_Registers[m_Pc->src_reg];
+        m_Registers[m_Pc->dreg] = m_Registers[RegDeref(m_Pc->sreg)] + m_Pc->disp + m_Registers[m_Pc->src_reg];
         m_Pc++;
     }
 
@@ -628,17 +628,17 @@ namespace relang::blend {
             switch (m_Pc->size)
             {
                 case 8:
-                    WriteAt(m_Registers[RegDeref(m_Pc->dreg)] + m_Pc->displacement + m_Registers[m_Pc->src_reg], m_Registers[m_Pc->sreg]);
+                    WriteAt(m_Registers[RegDeref(m_Pc->dreg)] + m_Pc->disp + m_Registers[m_Pc->src_reg], m_Registers[m_Pc->sreg]);
                     break;
                 case 16:
-                    WriteAt16(m_Registers[RegDeref(m_Pc->dreg)] + m_Pc->displacement + m_Registers[m_Pc->src_reg], m_Registers[m_Pc->sreg]);
+                    WriteAt16(m_Registers[RegDeref(m_Pc->dreg)] + m_Pc->disp + m_Registers[m_Pc->src_reg], m_Registers[m_Pc->sreg]);
                     break;
                 case 32:
-                    WriteAt32(m_Registers[RegDeref(m_Pc->dreg)] + m_Pc->displacement + m_Registers[m_Pc->src_reg], m_Registers[m_Pc->sreg]);
+                    WriteAt32(m_Registers[RegDeref(m_Pc->dreg)] + m_Pc->disp + m_Registers[m_Pc->src_reg], m_Registers[m_Pc->sreg]);
                     break;
                 default:
                 case 64:
-                    WriteAt64(m_Registers[RegDeref(m_Pc->dreg)] + m_Pc->displacement + m_Registers[m_Pc->src_reg], m_Registers[m_Pc->sreg]);
+                    WriteAt64(m_Registers[RegDeref(m_Pc->dreg)] + m_Pc->disp + m_Registers[m_Pc->src_reg], m_Registers[m_Pc->sreg]);
                     break;
             }
         }
@@ -647,17 +647,17 @@ namespace relang::blend {
             switch (m_Pc->size)
             {
                 case 8:
-                    WriteAt(m_Registers[RegDeref(m_Pc->dreg)] + m_Pc->displacement + m_Registers[m_Pc->src_reg], m_Pc->imm64);
+                    WriteAt(m_Registers[RegDeref(m_Pc->dreg)] + m_Pc->disp + m_Registers[m_Pc->src_reg], m_Pc->imm64);
                     break;
                 case 16:
-                    WriteAt16(m_Registers[RegDeref(m_Pc->dreg)] + m_Pc->displacement + m_Registers[m_Pc->src_reg], m_Pc->imm64);
+                    WriteAt16(m_Registers[RegDeref(m_Pc->dreg)] + m_Pc->disp + m_Registers[m_Pc->src_reg], m_Pc->imm64);
                     break;
                 case 32:
-                    WriteAt32(m_Registers[RegDeref(m_Pc->dreg)] + m_Pc->displacement + m_Registers[m_Pc->src_reg], m_Pc->imm64);
+                    WriteAt32(m_Registers[RegDeref(m_Pc->dreg)] + m_Pc->disp + m_Registers[m_Pc->src_reg], m_Pc->imm64);
                     break;
                 default:
                 case 64:
-                    WriteAt64(m_Registers[RegDeref(m_Pc->dreg)] + m_Pc->displacement + m_Registers[m_Pc->src_reg], m_Pc->imm64);
+                    WriteAt64(m_Registers[RegDeref(m_Pc->dreg)] + m_Pc->disp + m_Registers[m_Pc->src_reg], m_Pc->imm64);
                     break;
             }
         }
@@ -670,17 +670,17 @@ namespace relang::blend {
         switch (m_Pc->size)
         {
             case 8:
-                m_Registers[m_Pc->dreg] = ReadFrom(m_Registers[RegDeref(m_Pc->sreg)] + m_Pc->displacement + m_Registers[m_Pc->src_reg]);
+                m_Registers[m_Pc->dreg] = ReadFrom(m_Registers[RegDeref(m_Pc->sreg)] + m_Pc->disp + m_Registers[m_Pc->src_reg]);
                 break;
             case 16:
-                m_Registers[m_Pc->dreg] = ReadFrom16(m_Registers[RegDeref(m_Pc->sreg)] + m_Pc->displacement + m_Registers[m_Pc->src_reg]);
+                m_Registers[m_Pc->dreg] = ReadFrom16(m_Registers[RegDeref(m_Pc->sreg)] + m_Pc->disp + m_Registers[m_Pc->src_reg]);
                 break;
             case 32:
-                m_Registers[m_Pc->dreg] = ReadFrom32(m_Registers[RegDeref(m_Pc->sreg)] + m_Pc->displacement + m_Registers[m_Pc->src_reg]);
+                m_Registers[m_Pc->dreg] = ReadFrom32(m_Registers[RegDeref(m_Pc->sreg)] + m_Pc->disp + m_Registers[m_Pc->src_reg]);
                 break;
             default:
             case 64:
-                m_Registers[m_Pc->dreg] = ReadFrom64(m_Registers[RegDeref(m_Pc->sreg)] + m_Pc->displacement + m_Registers[m_Pc->src_reg]);
+                m_Registers[m_Pc->dreg] = ReadFrom64(m_Registers[RegDeref(m_Pc->sreg)] + m_Pc->disp + m_Registers[m_Pc->src_reg]);
                 break;
         }
         m_Pc++;

@@ -11,4 +11,5 @@ set(VENDOR_DIR "${CMAKE_SOURCE_DIR}/vendor")
 # Sub projects
 add_subdirectory("blend")
 add_subdirectory("basm")
+add_subdirectory("refront")
 #add_subdirectory("alcc")

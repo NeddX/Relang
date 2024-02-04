@@ -1,6 +1,6 @@
 #include "Lexer.h"
 
-namespace relang::rmc
+namespace relang::basm
 {
     void Token::Dump() const
     {

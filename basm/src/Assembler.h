@@ -1,7 +1,7 @@
 #ifndef BLEND_ASSEMBLER_H
 #define BLEND_ASSEMBLER_H
 
-#include <BLEND.h>
+#include <Blend.h>
 #include <cstdint>
 #include <unordered_map>
 
@@ -10,7 +10,7 @@
 
 #include <CommonDef.h>
 
-namespace relang::rmc
+namespace relang::basm
 {
     // Heads Up: This file is cursed by the devil himself and formatting these enums are impossible!
     // --at least with Emacs that is.

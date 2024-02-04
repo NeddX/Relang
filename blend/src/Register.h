@@ -84,11 +84,16 @@ namespace relang::blend {
         }
     };
 
+    inline RegType MemReg(const RegType reg) noexcept
+    {
+        return reg | RegType::PTR;
+    }
+
     struct Register
     {
         RegType type = RegType::NUL;
         bool ptr = false;
-        i64 displacement = 0;
+        i64 disp = 0;
 
     public:
         inline static const std::vector<std::string> RegisterStr =

@@ -1,13 +1,13 @@
 #ifndef BLEND_BASM_LEXER_H
 #define BLEND_BASM_LEXER_H
 
-#include <BLEND.h>
+#include <Blend.h>
 #include <string>
 #include <vector>
 
 #define GET_TOKEN_STR(token) Token::TokenStr[(usize)token]
 
-namespace relang::rmc {
+namespace relang::basm {
     // Forward declerations
     struct Token;
 
