@@ -6,7 +6,7 @@
 	const		ASCII_POUND			#35
 
 	byte		s_Wrld				#32, fill(#100), #0
-	byte		s_IntroText			"Snake v1.0 on ALVM\nPress ENTER to start.\n", #0	
+	byte		s_IntroText			"Snake v1.0 on BLEND\nPress ENTER to start.\n", #0	
 	byte		s_ClearCmd			"clear", #0	
 	byte		s_RenderFmt			"%s", #10, #0
 	byte		b_Run				#1	

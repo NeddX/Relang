@@ -1,7 +1,8 @@
 #include "Utils.h"
 
-namespace rlang::alvm::utils {
+namespace relang::blend::utils {
     namespace gterm {
+#ifdef BLEND_PLATFORM_UNIX
         // Source: https://stackoverflow.com/questions/448944/c-non-blocking-keyboard-input
         struct termios orig_termios;
 
@@ -43,5 +44,6 @@ namespace rlang::alvm::utils {
                 return c;
             }
         }
+#endif
     }
 }

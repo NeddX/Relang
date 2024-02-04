@@ -1,8 +1,8 @@
-#ifndef ALVM_ALASM_H
-#define ALVM_ALASM_H
+#ifndef BLEND_BASM_H
+#define BLEND_BASM_H
 
 #include "../src/Assembler.h"
 #include "../src/Lexer.h"
 #include "../src/Utils.h"
 
-#endif // ALVM_ALASM_H
+#endif // BLEND_BASM_H

@@ -13,7 +13,7 @@ if (NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_custom_command(
         TARGET alcc-rs
         POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory "${ALCC_OUTPUT_DIR}/debug/" "${ALVM_BINARY_OUTPUT_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${ALCC_OUTPUT_DIR}/debug/" "${BLEND_BINARY_OUTPUT_DIR}"
     )
 elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
     add_custom_target(
@@ -24,6 +24,6 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
     add_custom_command(
         TARGET alcc-rs
         POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory "${ALCC_OUTPUT_DIR}/debug/" "${ALVM_BINARY_OUTPUT_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${ALCC_OUTPUT_DIR}/debug/" "${BLEND_BINARY_OUTPUT_DIR}"
     )
 endif()

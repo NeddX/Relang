@@ -1,6 +1,8 @@
 #include "Runtime.h"
 #include "Instruction.h"
 
+using namespace relang;
+
 #define ResetFlags() \
     m_Registers[RegType::SFR] = 0
 #define SetZF() \
@@ -30,7 +32,7 @@
 #define ResetSFR() \
     m_Registers[RegType::SFR] = 0x0
 
-/*m_Registers[RegType::PF] = [](std::uint8_t num) -> std::uint8_t	\
+/*m_Registers[RegType::PF] = [](u8 num) -> u8	\
 {                                                                   \
     auto n = 0;                                                     \
     while (num)                                                     \
@@ -62,29 +64,29 @@
             ResetOF();                                                                        \
     } while (0)
 
-#define Push8(u8) \
+#define Push8(uval8) \
     m_Sp--;       \
-    *(std::uint8_t*)m_Sp = (std::uint8_t)(u8)
-#define Push16(u16) \
+    *(u8*)m_Sp = (u8)(uval8)
+#define Push16(uval16) \
     m_Sp -= 2;      \
-    *(std::uint16_t*)m_Sp = (std::uint16_t)(u16)
-#define Push32(u32) \
+    *(u16*)m_Sp = (u16)(uval16)
+#define Push32(uval32) \
     m_Sp -= 4;      \
-    *(std::uint32_t*)m_Sp = (std::uint32_t)(u32)
-#define Push64(u64) \
+    *(u32*)m_Sp = (u32)(uval32)
+#define Push64(uval64) \
     m_Sp -= 8;      \
-    *(std::uint64_t*)m_Sp = (std::uint64_t)(u64)
-#define Pop8(u8)               \
-    u8 = *(std::uint8_t*)m_Sp; \
+    *(u64*)m_Sp = (u64)(uval64)
+#define Pop8(uval8)               \
+    uval8 = *(u8*)m_Sp; \
     m_Sp++
-#define Pop16(u16)               \
-    u16 = *(std::uint16_t*)m_Sp; \
+#define Pop16(uval16)               \
+    uval16 = *(u16*)m_Sp; \
     m_Sp += 2
-#define Pop32(u32)               \
-    u32 = *(std::uint32_t*)m_Sp; \
+#define Pop32(uval32)               \
+    uval32 = *(u32*)m_Sp; \
     m_Sp += 4
-#define Pop64(u64)               \
-    u64 = *(std::uint64_t*)m_Sp; \
+#define Pop64(uval64)               \
+    uval64 = *(u64*)m_Sp; \
     m_Sp += 8
 #define Pop8s() \
     m_Sp++
@@ -95,61 +97,61 @@
 #define Pop64s() \
     m_Sp += 8
 #define ReadFrom(addr) \
-    *((std::uint8_t*)(addr))
+    *((u8*)(addr))
 #define ReadFrom16(addr) \
-    *((std::uint16_t*)(addr))
+    *((u16*)(addr))
 #define ReadFrom32(addr) \
-    *((std::uint32_t*)(addr))
+    *((u32*)(addr))
 #define ReadFrom64(addr) \
-    *((std::uint64_t*)(addr))
-#define WriteAt(addr, u8) \
-    *((std::uint8_t*)(addr)) = (std::uint8_t)(u8)
-#define WriteAt16(addr, u16) \
-    *((std::uint16_t*)(addr)) = (std::uint16_t)(u16)
-#define WriteAt32(addr, u32) \
-    *((std::uint32_t*)(addr)) = (std::uint32_t)(u32)
-#define WriteAt64(addr, u64) \
-    *((std::uint64_t*)(addr)) = (std::uint64_t)(u64)
+    *((u64*)(addr))
+#define WriteAt(addr, uval8) \
+    *((u8*)(addr)) = (u8)(uval8)
+#define WriteAt16(addr, uval16) \
+    *((u16*)(addr)) = (u16)(uval16)
+#define WriteAt32(addr, uval32) \
+    *((u32*)(addr)) = (u32)(uval32)
+#define WriteAt64(addr, uval64) \
+    *((u64*)(addr)) = (u64)(uval64)
 
 #define RegDeref(reg) \
     reg& RegType::DPTR
 
-namespace rlang::alvm {
-    ALVM::ALVM(const std::vector<std::uint8_t>& data, const std::size_t bssSize)
+namespace relang::blend {
+    Blend::Blend(const std::vector<u8>& data, const usize bssSize)
         : m_Stack(data), m_Sp(m_Registers[RegType::SP]), m_BssSize(bssSize)
     {
         m_Stack.resize(m_Stack.size() + STACK_SIZE + m_BssSize);
 
         // Init registers
-        m_Registers[RegType::SS] = (std::uintptr_t)m_Stack.data() + data.size();
+        m_Registers[RegType::SS] = (uintptr)m_Stack.data() + data.size();
         m_Registers[RegType::SP] = m_Registers[RegType::SS] + STACK_SIZE;
-        m_Registers[RegType::DS] = (std::uintptr_t)m_Stack.data();
+        m_Registers[RegType::DS] = (uintptr)m_Stack.data();
     }
 
-    void ALVM::Run(const std::vector<Instruction>& code, std::int64_t& result)
+    void Blend::Run(const std::vector<Instruction>& code, i64& result)
     {
         m_Bytecode = ((std::vector<Instruction>&)code).data();
         m_Pc = m_Bytecode;
 
-        m_Registers[RegType::CS] = (std::uintptr_t)m_Bytecode;
+        m_Registers[RegType::CS] = (uintptr)m_Bytecode;
 
         while (m_Pc)
-            (this->*m_Instructions[(std::size_t)m_Pc->opcode])();
+            (this->*m_Instructions[(usize)m_Pc->opcode])();
 
         result = m_Registers[RegType::R0];
     }
 
-    void ALVM::Nop()
+    void Blend::Nop()
     {
         m_Pc++;
     }
 
-    void ALVM::End()
+    void Blend::End()
     {
         m_Pc = nullptr;
     }
 
-    void ALVM::Push()
+    void Blend::Push()
     {
         switch (m_Pc->size)
         {
@@ -157,11 +159,11 @@ namespace rlang::alvm {
             {
                 if (m_Pc->sreg != RegType::NUL)
                 {
-                    Push8((std::uint8_t)m_Registers[m_Pc->sreg]);
+                    Push8((u8)m_Registers[m_Pc->sreg]);
                 }
                 else
                 {
-                    Push8((std::uint8_t)m_Pc->imm64);
+                    Push8((u8)m_Pc->imm64);
                 }
                 break;
             }
@@ -169,11 +171,11 @@ namespace rlang::alvm {
             {
                 if (m_Pc->sreg != RegType::NUL)
                 {
-                    Push16((std::uint16_t)m_Registers[m_Pc->sreg]);
+                    Push16((u16)m_Registers[m_Pc->sreg]);
                 }
                 else
                 {
-                    Push16((std::uint16_t)m_Pc->imm64);
+                    Push16((u16)m_Pc->imm64);
                 }
                 break;
             }
@@ -205,7 +207,7 @@ namespace rlang::alvm {
         m_Pc++;
     }
 
-    void ALVM::Pop()
+    void Blend::Pop()
     {
         switch (m_Pc->size)
         {
@@ -261,9 +263,9 @@ namespace rlang::alvm {
         m_Pc++;
     }
 
-    void ALVM::Add()
+    void Blend::Add()
     {
-        std::uint64_t op1, op2, res;
+        u64 op1, op2, res;
         // ..., r
         if (m_Pc->dreg != RegType::NUL)
         {
@@ -281,13 +283,13 @@ namespace rlang::alvm {
             res = op1 + op2;
             m_Registers[m_Pc->dreg] = res;
         }
-        TriggerFlags(op1, op2, res, std::int32_t, 1);
+        TriggerFlags(op1, op2, res, i32, 1);
         m_Pc++;
     }
 
-    void ALVM::Sub()
+    void Blend::Sub()
     {
-        std::uint64_t op1, op2, res;
+        u64 op1, op2, res;
         // ..., r
         if (m_Pc->dreg != RegType::NUL)
         {
@@ -305,60 +307,60 @@ namespace rlang::alvm {
             res = op1 - op2;
             m_Registers[m_Pc->dreg] = res;
         }
-        TriggerFlags(op1, op2, res, std::int32_t, 1);
+        TriggerFlags(op1, op2, res, i32, 1);
         m_Pc++;
     }
 
-    void ALVM::Mul()
+    void Blend::Mul()
     {
         // r0, r
-        std::uint64_t op1 = m_Registers[m_Pc->dreg], op2 = m_Registers[m_Pc->sreg], res = op1 * op2;
+        u64 op1 = m_Registers[m_Pc->dreg], op2 = m_Registers[m_Pc->sreg], res = op1 * op2;
         m_Registers[m_Pc->dreg] = res;
-        TriggerFlags(op1, op2, res, std::int32_t, 1);
+        TriggerFlags(op1, op2, res, i32, 1);
         m_Pc++;
     }
 
-    void ALVM::Div()
+    void Blend::Div()
     {
         // r0, r
-        std::uint64_t op1 = m_Registers[RegType::R0], op2 = m_Registers[m_Pc->sreg], res = op1 / op2;
+        u64 op1 = m_Registers[RegType::R0], op2 = m_Registers[m_Pc->sreg], res = op1 / op2;
         m_Registers[RegType::R0] = res;
         m_Registers[RegType::R3] = op1 % op2;
-        TriggerFlags(op1, op2, res, std::int32_t, 0);
+        TriggerFlags(op1, op2, res, i32, 0);
         m_Pc++;
     }
 
-    void ALVM::Neg()
+    void Blend::Neg()
     {
         m_Registers[m_Pc->sreg] *= -1;
         m_Pc++;
     }
 
-    void ALVM::Increment()
+    void Blend::Increment()
     {
         // r
-        std::uint64_t op1 = m_Registers[m_Pc->sreg], res = ++op1;
-        TriggerFlags(op1, 1, res, std::int64_t, 1);
+        u64 op1 = m_Registers[m_Pc->sreg], res = ++op1;
+        TriggerFlags(op1, 1, res, i64, 1);
         m_Registers[m_Pc->sreg] = res;
         m_Pc++;
     }
 
-    void ALVM::Decrement()
+    void Blend::Decrement()
     {
         // r
-        std::uint64_t op1 = m_Registers[m_Pc->sreg], res = --op1;
-        TriggerFlags(op1, 1, res, std::int64_t, 0);
+        u64 op1 = m_Registers[m_Pc->sreg], res = --op1;
+        TriggerFlags(op1, 1, res, i64, 0);
         m_Registers[m_Pc->sreg] = res;
         m_Pc++;
     }
 
-    void ALVM::Printf()
+    void Blend::Printf()
     {
         // m, m
         // sfmt_ptr, args_ptr
-        std::size_t total_size = 0;
-        std::size_t last_occurence = 0;
-        const std::size_t size = std::strlen((const char*)m_Registers[m_Pc->sreg] + m_Pc->displacement + m_Registers[m_Pc->src_reg]) + 1;
+        usize total_size = 0;
+        usize last_occurence = 0;
+        const usize size = std::strlen((const char*)m_Registers[m_Pc->sreg] + m_Pc->displacement + m_Registers[m_Pc->src_reg]) + 1;
         const unsigned char* format_str = (const unsigned char*)m_Registers[m_Pc->sreg] + m_Pc->displacement + m_Registers[m_Pc->src_reg];
 
         for (auto i = 0; i < size; ++i)
@@ -401,25 +403,25 @@ namespace rlang::alvm {
                     if (std::strcmp(f, "d") == 0)
                     {
                         std::printf("%d",
-                                    *((std::int32_t*)(m_Registers[m_Pc->dreg] + total_size)));
+                                    *((i32*)(m_Registers[m_Pc->dreg] + total_size)));
                         total_size += 4;
                     }
                     else if (std::strcmp(f, "u") == 0)
                     {
                         std::printf("%u",
-                                    *((std::uint32_t*)(m_Registers[m_Pc->dreg] + total_size)));
+                                    *((u32*)(m_Registers[m_Pc->dreg] + total_size)));
                         total_size += 4;
                     }
                     else if (std::strcmp(f, "lu") == 0)
                     {
                         std::printf("%lu",
-                                    *((std::uint64_t*)(m_Registers[m_Pc->dreg] + total_size)));
+                                    *((u64*)(m_Registers[m_Pc->dreg] + total_size)));
                         total_size += 8;
                     }
                     else if (std::strcmp(f, "ld") == 0)
                     {
                         std::printf("%ld",
-                                    *((std::int64_t*)(m_Registers[m_Pc->dreg] + total_size)));
+                                    *((i64*)(m_Registers[m_Pc->dreg] + total_size)));
                         total_size += 8;
                     }
                     else if (std::strcmp(f, "s") == 0)
@@ -432,7 +434,7 @@ namespace rlang::alvm {
                     }
                     else if (std::strcmp(f, "b") == 0)
                     {
-                        std::printf("%u", *((std::int8_t*)(m_Registers[m_Pc->dreg] + total_size)));
+                        std::printf("%u", *((i8*)(m_Registers[m_Pc->dreg] + total_size)));
                     }
                     else
                     {
@@ -450,7 +452,7 @@ namespace rlang::alvm {
         m_Pc++;
     }
 
-    void ALVM::PrintInt()
+    void Blend::PrintInt()
     {
         if (m_Pc->sreg != RegType::NUL)
         {
@@ -463,13 +465,13 @@ namespace rlang::alvm {
         m_Pc++;
     }
 
-    void ALVM::PrintStr()
+    void Blend::PrintStr()
     {
         std::printf("%s", (const char*)m_Registers[m_Pc->sreg]);
         m_Pc++;
     }
 
-    void ALVM::PrintChar()
+    void Blend::PrintChar()
     {
         if (m_Pc->sreg != RegType::NUL)
         {
@@ -482,9 +484,9 @@ namespace rlang::alvm {
         m_Pc++;
     }
 
-    void ALVM::Compare()
+    void Blend::Compare()
     {
-        std::uint64_t op1, op2, res;
+        u64 op1, op2, res;
         // r, ...
         op2 = m_Registers[m_Pc->sreg];
         if (m_Pc->dreg != RegType::NUL)
@@ -498,11 +500,11 @@ namespace rlang::alvm {
             op1 = m_Pc->imm64;
         }
         res = op1 - op2;
-        TriggerFlags(op1, op2, res, std::int64_t, 0);
+        TriggerFlags(op1, op2, res, i64, 0);
         m_Pc++;
     }
 
-    void ALVM::Move()
+    void Blend::Move()
     {
         // r, ...
         if (m_Pc->dreg != RegType::NUL)
@@ -517,14 +519,14 @@ namespace rlang::alvm {
         m_Pc++;
     }
 
-    void ALVM::Lea()
+    void Blend::Lea()
     {
         // r, m
         m_Registers[m_Pc->dreg] = m_Registers[RegDeref(m_Pc->sreg)] + m_Pc->displacement + m_Registers[m_Pc->src_reg];
         m_Pc++;
     }
 
-    void ALVM::Jump()
+    void Blend::Jump()
     {
         if (m_Pc->sreg != RegType::NUL)
             m_Pc = m_Bytecode + m_Registers[m_Pc->sreg];
@@ -532,7 +534,7 @@ namespace rlang::alvm {
             m_Pc = m_Bytecode + m_Pc->imm64;
     }
 
-    void ALVM::Enter()
+    void Blend::Enter()
     {
         Push64(m_Registers[RegType::BP]);
         m_Registers[RegType::BP] = m_Registers[RegType::SP];
@@ -540,47 +542,47 @@ namespace rlang::alvm {
         m_Pc++;
     }
 
-    void ALVM::Call()
+    void Blend::Call()
     {
-        Push64((std::uintptr_t)(1 + m_Pc));
+        Push64((uintptr)(1 + m_Pc));
         Jump();
     }
 
-    void ALVM::Return()
+    void Blend::Return()
     {
-        Pop64(std::uintptr_t addr);
+        Pop64(uintptr addr);
         m_Pc = (Instruction*)addr;
     }
 
-    void ALVM::Leave()
+    void Blend::Leave()
     {
         m_Registers[RegType::SP] = m_Registers[RegType::BP];
         Pop64(m_Registers[RegType::BP]);
         m_Pc++;
     }
 
-    void ALVM::Malloc()
+    void Blend::Malloc()
     {
         // imm64, reg
         if (m_Pc->sreg != RegType::NUL)
         {
-            m_Registers[RegType::R0] = (std::uintptr_t)std::malloc((std::size_t)m_Registers[m_Pc->dreg]);
+            m_Registers[RegType::R0] = (uintptr)std::malloc((usize)m_Registers[m_Pc->dreg]);
         }
         else
         {
-            m_Registers[RegType::R0] = (std::uintptr_t)std::malloc((std::size_t)m_Pc->imm64);
+            m_Registers[RegType::R0] = (uintptr)std::malloc((usize)m_Pc->imm64);
         }
         m_Pc++;
     }
 
-    void ALVM::Free()
+    void Blend::Free()
     {
         // So dodgy...
         std::free((void*)m_Registers[m_Pc->sreg]);
         m_Pc++;
     }
 
-    void ALVM::Memset()
+    void Blend::Memset()
     {
         if (m_Pc->sreg != RegType::NUL)
         {
@@ -593,7 +595,7 @@ namespace rlang::alvm {
         m_Pc++;
     }
 
-    void ALVM::Memcpy()
+    void Blend::Memcpy()
     {
         if (m_Pc->sreg != RegType::NUL)
         {
@@ -606,19 +608,19 @@ namespace rlang::alvm {
         m_Pc++;
     }
 
-    void ALVM::Lrzf()
+    void Blend::Lrzf()
     {
         m_Registers[RegType::R0] = m_Registers[RegType::SFR];
         m_Pc++;
     }
 
-    void ALVM::Srzf()
+    void Blend::Srzf()
     {
         m_Registers[RegType::SFR] = m_Registers[RegType::R0];
         m_Pc++;
     }
 
-    void ALVM::Store()
+    void Blend::Store()
     {
         // imm32 | reg, m
         if (m_Pc->sreg != RegType::NUL)
@@ -662,7 +664,7 @@ namespace rlang::alvm {
         m_Pc++;
     }
 
-    void ALVM::Load()
+    void Blend::Load()
     {
         // r, m
         switch (m_Pc->size)
@@ -684,14 +686,14 @@ namespace rlang::alvm {
         m_Pc++;
     }
 
-    void ALVM::System()
+    void Blend::System()
     {
         auto status = std::system((const char*)m_Registers[m_Pc->sreg]);
         m_Registers[RegType::R4] = status;
         m_Pc++;
     }
 
-    void ALVM::Syscall()
+    void Blend::Syscall()
     {
 #if defined(__linux__)
         m_Registers[RegType::R0] = syscall(
@@ -709,18 +711,18 @@ namespace rlang::alvm {
         m_Pc++;
     }
 
-    void ALVM::InvokeC()
+    void Blend::InvokeC()
     {
         m_Pc++;
     }
 
-    void ALVM::GetChar()
+    void Blend::GetChar()
     {
-        m_Registers[m_Pc->sreg] = (std::uintptr_t)std::getchar();
+        m_Registers[m_Pc->sreg] = (uintptr)std::getchar();
         m_Pc++;
     }
 
-    void ALVM::JmpIfZero()
+    void Blend::JmpIfZero()
     {
         if (GetZF())
             Jump();
@@ -728,7 +730,7 @@ namespace rlang::alvm {
             m_Pc++;
     }
 
-    void ALVM::JmpIfNotZero()
+    void Blend::JmpIfNotZero()
     {
         if (!GetZF())
             Jump();
@@ -736,7 +738,7 @@ namespace rlang::alvm {
             m_Pc++;
     }
 
-    void ALVM::JmpIfSign()
+    void Blend::JmpIfSign()
     {
         if (GetSF())
             Jump();
@@ -744,7 +746,7 @@ namespace rlang::alvm {
             m_Pc++;
     }
 
-    void ALVM::JmpIfNotSign()
+    void Blend::JmpIfNotSign()
     {
         if (!GetSF())
             Jump();
@@ -752,7 +754,7 @@ namespace rlang::alvm {
             m_Pc++;
     }
 
-    void ALVM::JmpIfOverflow()
+    void Blend::JmpIfOverflow()
     {
         if (GetOF())
             Jump();
@@ -760,7 +762,7 @@ namespace rlang::alvm {
             m_Pc++;
     }
 
-    void ALVM::JmpIfNotOverflow()
+    void Blend::JmpIfNotOverflow()
     {
         if (!GetOF())
             Jump();
@@ -768,7 +770,7 @@ namespace rlang::alvm {
             m_Pc++;
     }
 
-    void ALVM::JmpIfCarry()
+    void Blend::JmpIfCarry()
     {
         if (GetCF())
             Jump();
@@ -776,7 +778,7 @@ namespace rlang::alvm {
             m_Pc++;
     }
 
-    void ALVM::JmpIfNotCarry()
+    void Blend::JmpIfNotCarry()
     {
         if (!GetCF())
             Jump();
@@ -786,7 +788,7 @@ namespace rlang::alvm {
 
     // TODO: Shove all flags into a single registers, please.
 
-    void ALVM::JmpIfUnsignedGreaterOrEqualTo()
+    void Blend::JmpIfUnsignedGreaterOrEqualTo()
     {
         if (!GetCF() || GetZF())
             Jump();
@@ -794,7 +796,7 @@ namespace rlang::alvm {
             m_Pc++;
     }
 
-    void ALVM::JmpIfUnsignedLesserOrEqualTo()
+    void Blend::JmpIfUnsignedLesserOrEqualTo()
     {
         if (GetCF() || GetZF())
             Jump();
@@ -802,7 +804,7 @@ namespace rlang::alvm {
             m_Pc++;
     }
 
-    void ALVM::JmpIfSignedLessThan()
+    void Blend::JmpIfSignedLessThan()
     {
         if (GetSF() != GetOF())
             Jump();
@@ -810,7 +812,7 @@ namespace rlang::alvm {
             m_Pc++;
     }
 
-    void ALVM::BitwiseAND()
+    void Blend::BitwiseAND()
     {
         if (m_Pc->dreg != RegType::NUL)
         {
@@ -841,7 +843,7 @@ namespace rlang::alvm {
         m_Pc++;
     }
 
-    void ALVM::BitwsieOR()
+    void Blend::BitwsieOR()
     {
         if (m_Pc->dreg != RegType::NUL)
         {
@@ -872,13 +874,13 @@ namespace rlang::alvm {
         m_Pc++;
     }
 
-    void ALVM::BitwiseNOT()
+    void Blend::BitwiseNOT()
     {
         m_Registers[m_Pc->sreg] = ~m_Registers[m_Pc->sreg];
         m_Pc++;
     }
 
-    void ALVM::BitwiseXOR()
+    void Blend::BitwiseXOR()
     {
         if (m_Pc->dreg != RegType::NUL)
         {
@@ -909,9 +911,9 @@ namespace rlang::alvm {
         m_Pc++;
     }
 
-    void ALVM::BitwiseTEST()
+    void Blend::BitwiseTEST()
     {
-        std::uintptr_t res;
+        uintptr res;
         if (m_Pc->dreg != RegType::NUL)
         {
             res = m_Registers[m_Pc->dreg] & m_Registers[m_Pc->sreg];
@@ -941,9 +943,9 @@ namespace rlang::alvm {
         m_Pc++;
     }
 
-    void ALVM::PushAllRegisters()
+    void Blend::PushAllRegisters()
     {
-        for (std::uint8_t i = (std::uint8_t)RegType::R0; i <= (std::uint8_t)RegType::R31; ++i)
+        for (u8 i = (u8)RegType::R0; i <= (u8)RegType::R31; ++i)
         {
             switch (m_Pc->size)
             {
@@ -964,9 +966,9 @@ namespace rlang::alvm {
         m_Pc++;
     }
 
-    void ALVM::PopAllRegisters()
+    void Blend::PopAllRegisters()
     {
-        for (std::uint8_t i = (std::uint8_t)RegType::R31; i != 255; --i)
+        for (u8 i = (u8)RegType::R31; i != 255; --i)
         {
             switch (m_Pc->size)
             {
@@ -987,20 +989,20 @@ namespace rlang::alvm {
         m_Pc++;
     }
 
-    void ALVM::SetConioMode()
+    void Blend::SetConioMode()
     {
         if (m_Pc->imm64)
         {
-            utils::gterm::set_conio_terminal_mode();
+            //utils::gterm::set_conio_terminal_mode();
         }
         else
         {
-            utils::gterm::reset_terminal_mode();
+            //utils::gterm::reset_terminal_mode();
         }
         m_Pc++;
     }
 
-    void ALVM::Debug_DumpFlags()
+    void Blend::Debug_DumpFlags()
     {
         std::cout << "---------- ART_DBG ----------\n";
         std::cout << "Zero Flag: " << GetZF() << std::endl;
@@ -1010,4 +1012,4 @@ namespace rlang::alvm {
         std::cout << "-----------------------------\n";
         m_Pc++;
     }
-} // namespace rlang::alvm
+} // namespace relang::blend

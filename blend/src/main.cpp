@@ -1,46 +1,48 @@
 #include <sdafx.h>
 
-#include "../include/ALVM.h"
+#include "../include/BLEND.h"
+
+using namespace relang;
+using namespace relang::blend;
 
 int main(const int argc, const char* argv[])
 {
-    using namespace rlang::alvm;
 
-    std::int64_t result = 0;
+    i64 result = 0;
     if (argc > 1)
     {
         std::ifstream fs(argv[1]);
         if (fs.is_open())
         {
             InstructionList code_section;
-            std::vector<std::uint8_t> data_section;
-            std::size_t bss_size;
+            std::vector<u8> data_section;
+            usize bss_size;
 
             fs.seekg(0, fs.end);
-            std::size_t file_size = fs.tellg();
+            usize file_size = fs.tellg();
             fs.seekg(0, fs.beg);
 
-            std::uint8_t byte;
-            std::size_t size = 0;
-            while (fs.read((char*)&byte, sizeof(std::uint8_t)))
+            u8 byte;
+            usize size = 0;
+            while (fs.read((char*)&byte, sizeof(u8)))
             {
                 switch (byte)
                 {
                     case DATA_SECTION_INDIC:
                     {
-                        fs.read((char*)&size, sizeof(std::size_t));
-                        data_section.resize(size / sizeof(std::uint8_t));
+                        fs.read((char*)&size, sizeof(usize));
+                        data_section.resize(size / sizeof(u8));
                         fs.read((char*)data_section.data(), size);
                         break;
                     }
                     case BSS_SECTION_INDIC:
                     {
-                        fs.read((char*)&bss_size, sizeof(std::size_t));
+                        fs.read((char*)&bss_size, sizeof(usize));
                         break;
                     }
                     case CODE_SECTION_INDIC:
                     {
-                        fs.read((char*)&size, sizeof(std::size_t));
+                        fs.read((char*)&size, sizeof(usize));
                         code_section.resize(size / sizeof(Instruction));
                         fs.read((char*)code_section.data(), size);
                         break;
@@ -48,7 +50,7 @@ int main(const int argc, const char* argv[])
                 }
             }
 
-            ALVM vm(data_section, bss_size);
+            Blend vm(data_section, bss_size);
             vm.Run(code_section, result);
         }
         else

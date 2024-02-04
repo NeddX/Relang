@@ -1,18 +1,19 @@
-#ifndef ALVM_RUNTIME_UTILS_H
-#define ALVM_RUNTIME_UTILS_H
+#ifndef BLEND_RUNTIME_UTILS_H
+#define BLEND_RUNTIME_UTILS_H
 
 #include <sdafx.h>
 
-namespace rlang::alvm::utils {
+namespace relang::blend::utils {
     namespace ninvoke {
         /*void* Load(const char* dlib)
         {
             void* handle = dlopen(dlib, RLTD_LAZY);
             return handle;
         }*/
-    } // namespace rlang::alvm::utils::ninvoke
+    } // namespace relang::blend::utils::ninvoke
 
     namespace gterm {
+#ifdef BLEND_PLATFORM_UNIX
         // Source: https://stackoverflow.com/questions/448944/c-non-blocking-keyboard-input
         extern struct termios orig_termios;
 
@@ -20,7 +21,8 @@ namespace rlang::alvm::utils {
         void set_conio_terminal_mode();
         int kbhit();
         int getch();
-    } // namespace rlang::alvm::utils::gterm
-} // namespace rlang::alvm
+#endif
+    } // namespace relang::blend::utils::gterm
+} // namespace relang::blend
 
-#endif // ALVM_RUNTIME_UTILS_H
+#endif // BLEND_RUNTIME_UTILS_H
