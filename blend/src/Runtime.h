@@ -8,7 +8,7 @@
 #include "Utils.h"
 
 namespace relang::blend {
-    constexpr int STACK_SIZE = 1024 * 1024 * 2;
+    constexpr int STACK_SIZE = 300;
     constexpr u8 DATA_SECTION_INDIC = 0xFD;
     constexpr u8 CODE_SECTION_INDIC = 0xFC;
     constexpr u8 BSS_SECTION_INDIC = 0xFB;

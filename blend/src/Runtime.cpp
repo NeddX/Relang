@@ -114,7 +114,7 @@ using namespace relang;
     *((u64*)(addr)) = (u64)(uval64)
 
 #define RegDeref(reg) \
-    reg& RegType::DPTR
+    reg & RegType::DPTR
 
 namespace relang::blend {
     Blend::Blend(const std::vector<u8>& data, const usize bssSize)
@@ -123,7 +123,7 @@ namespace relang::blend {
         m_Stack.resize(m_Stack.size() + STACK_SIZE + m_BssSize);
 
         // Init registers
-        m_Registers[RegType::SS] = (uintptr)m_Stack.data() + data.size();
+        m_Registers[RegType::SS] = (uintptr)(m_Stack.data() + data.size());
         m_Registers[RegType::SP] = m_Registers[RegType::SS] + STACK_SIZE;
         m_Registers[RegType::DS] = (uintptr)m_Stack.data();
     }
@@ -507,7 +507,7 @@ namespace relang::blend {
     void Blend::Move()
     {
         // r, ...
-        if (m_Pc->dreg != RegType::NUL)
+        if (m_Pc->sreg != RegType::NUL)
         {
             // r, r
             m_Registers[m_Pc->dreg] = m_Registers[m_Pc->sreg];

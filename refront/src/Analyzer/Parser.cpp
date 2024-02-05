@@ -18,7 +18,10 @@ namespace relang::refront {
         Type Type::String(const Token& string_token) noexcept
         {
             auto type = Type{ .name = "CString", .ftype = FundamentalType::String };
-            type.size = string_token.span.text.size();
+            //type.size = string_token.span.text.size();
+
+            // String literals are pointers to the stored string inside the read only data section.
+            type.size = 64;
             return type;
         }
 

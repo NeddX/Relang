@@ -30,21 +30,27 @@ namespace relang::refront {
         {
             return ((SymbolTable*)this)->GetSymbol(name);
         }
+
+        std::pair<blend::Instruction, ast::Statement> MakeInst(const blend::Instruction& inst,
+                                                               const ast::Statement&     stmt) noexcept
+        {
+            return std::pair<blend::Instruction, ast::Statement>{ inst, stmt };
+        }
     } // namespace codegen
 
     using namespace codegen;
 
-    RegType GetReg(const usize idx) noexcept
+    RegType GetReg(const u8 idx) noexcept
     {
         constexpr RegType r = RegType::R0;
-        return (RegType)((usize)r + idx);
+        return r + idx;
     }
 
     Compiler::Compiler(SyntaxTree tree) : m_Tree(std::move(tree))
     {
     }
 
-    InstructionList Compiler::Compile()
+    CompiledCode Compiler::Compile()
     {
         for (const auto& s : m_Tree)
         {
@@ -57,7 +63,7 @@ namespace relang::refront {
                 default: break;
             }
         }
-        m_CompiledCode.push_back(Instruction{ .opcode = OpCode::End });
+        m_CompiledCode << MakeInst({ .opcode = OpCode::End });
         return m_CompiledCode;
     }
 
@@ -76,9 +82,9 @@ namespace relang::refront {
     {
         m_SymbolTableStack.push_back(SymbolTable{});
 
-        m_CompiledCode.push_back(Instruction{ .opcode = OpCode::Push, .sreg = RegType::BP });
-        m_CompiledCode.push_back(Instruction{ .opcode = OpCode::Mov, .sreg = RegType::SP, .dreg = RegType::BP });
-        // m_CompiledCode.push_back(Instruction{ .opcode = OpCode::Pushar });
+        m_CompiledCode << MakeInst({ .opcode = OpCode::Push, .sreg = RegType::BP }, block);
+        m_CompiledCode << MakeInst({ .opcode = OpCode::Mov, .sreg = RegType::SP, .dreg = RegType::BP }, block);
+        // m_CompiledCode << MakeInst({ .opcode = OpCode::Pushar }, block);
 
         for (const auto& s : block.children)
         {
@@ -93,8 +99,8 @@ namespace relang::refront {
         }
 
         m_SymbolTableStack.pop_back();
-        // m_CompiledCode.push_back(Instruction{ .opcode = OpCode::Popar });
-        m_CompiledCode.push_back(Instruction{ .opcode = OpCode::Leave });
+        // m_CompiledCode << MakeInst({ .opcode = OpCode::Popar }, block);
+        m_CompiledCode << MakeInst({ .opcode = OpCode::Leave }, block);
     }
 
     void Compiler::CompileVariableDeclaration(const Statement& var)
@@ -116,40 +122,25 @@ namespace relang::refront {
 
             // We know that a variable declaration statement will always have an Initializer statement if initialized
             // (but of course).
-            m_CompiledCode.push_back(Instruction{
+            /*
+            m_CompiledCode << MakeInst({
                 .opcode = OpCode::Mov, .sreg = RegType::SP, .dreg = GetReg(current_table.GetUsedRegisters()++) });
             CompileInitializer(var.children[0]);
-            switch (sym.stmt.type.ftype)
-            {
-                using enum FundamentalType;
+            */
 
-                case String: {
-                        m_CompiledCode.push_back(Instruction{ .opcode = OpCode::Pop,
-                                                              .sreg   = GetReg(current_table.GetUsedRegisters()++),
-                                                              .size   = (i8)Type::Character.size });
-                        m_CompiledCode.push_back(Instruction{ .opcode = OpCode::Store,
-                                                              .sreg   = GetReg(--current_table.GetUsedRegisters()),
-                                                              .dreg   = MemReg(RegType::BP),
-                                                              .disp   = current_table.GetOffset(),
-                                                              .size   = (i8)var.type.size });
-                    break;
-                }
+            CompileInitializer(var.children[0]);
 
-                case Character:
-                case Boolean:
-                case Integer32:
-                case Integer64: {
-                    m_CompiledCode.push_back(Instruction{ .opcode = OpCode::Store,
-                                                          .sreg   = GetReg(--current_table.GetUsedRegisters()),
-                                                          .dreg   = MemReg(RegType::BP),
-                                                          .disp   = current_table.GetOffset(),
-                                                          .size   = (i8)var.type.size });
-                    break;
-                }
-                default: break;
-            }
-            m_CompiledCode.push_back(Instruction{
-                .opcode = OpCode::Mov, .sreg = GetReg(--current_table.GetUsedRegisters()), .dreg = RegType::SP });
+            m_CompiledCode << MakeInst({ .opcode = OpCode::Store,
+                                         .sreg   = GetReg(--current_table.GetUsedRegisters()),
+                                         .dreg   = MemReg(RegType::BP),
+                                         .disp   = current_table.GetOffset(),
+                                         .size   = (i8)var.type.size },
+                                       var);
+
+            /*
+            m_CompiledCode << MakeInst({
+                .opcode = OpCode::Mov, .sreg = GetReg(--current_table.GetUsedRegisters()), .dreg = RegType::SP }, var);
+            */
             current_table.AddSymbol(sym);
         }
         else
@@ -163,10 +154,10 @@ namespace relang::refront {
                 case Character:
                 case Integer32:
                 case Integer64:
-                    m_CompiledCode.push_back(Instruction{ .opcode = OpCode::Store,
+                    m_CompiledCode << MakeInst({ .opcode = OpCode::Store,
                                                           .dreg   = MemReg(RegType::BP),
                                                           .disp   = current_table.GetOffset(),
-                                                          .size   = (i8)var.type.size });
+                                                          .size   = (i8)var.type.size }, var);
                     break;
                 // FIXME: Uninitilized strings do not allocate space.
                 case String: break;
@@ -205,8 +196,8 @@ namespace relang::refront {
 
                 auto&      used_regs = current_table.GetUsedRegisters();
                 const auto op_code   = (expr.kind == AdditionExpression) ? OpCode::Add : OpCode::Sub;
-                m_CompiledCode.push_back(
-                    Instruction{ .opcode = op_code, .sreg = GetReg(--used_regs), .dreg = GetReg(used_regs - 1) });
+                m_CompiledCode << MakeInst(
+                    { .opcode = op_code, .sreg = GetReg(--used_regs), .dreg = GetReg(used_regs - 1) }, expr);
                 break;
             }
             case DivisionExpression:
@@ -216,17 +207,18 @@ namespace relang::refront {
 
                 auto&      used_regs = current_table.GetUsedRegisters();
                 const auto op_code   = (expr.kind == DivisionExpression) ? OpCode::Div : OpCode::Mul;
-                m_CompiledCode.push_back(
-                    Instruction{ .opcode = op_code, .sreg = GetReg(--used_regs), .dreg = GetReg(used_regs - 1) });
+                m_CompiledCode << MakeInst(
+                   { .opcode = op_code, .sreg = GetReg(--used_regs), .dreg = GetReg(used_regs - 1) }, expr);
                 break;
             }
 
             case IdentifierName: {
                 auto& sym = m_SymbolTableStack.back().GetSymbol(expr.name);
-                m_CompiledCode.push_back(Instruction{ .opcode  = OpCode::Lea,
-                                                      .sreg    = GetReg(current_table.GetUsedRegisters()++),
-                                                      .disp    = sym.address,
-                                                      .src_reg = RegType::BP });
+                    m_CompiledCode << MakeInst({ .opcode = OpCode::Load,
+                                                 .sreg   = MemReg(RegType::BP),
+                                                 .dreg   = GetReg(current_table.GetUsedRegisters()++),
+                                                 .disp   = sym.address },
+                                               expr);
                 break;
             }
             default: break;
@@ -251,21 +243,24 @@ namespace relang::refront {
             case Character:
             case Integer32:
             case Integer64: {
-                m_CompiledCode.push_back(Instruction{ .opcode = OpCode::Mov,
+                m_CompiledCode << MakeInst({ .opcode = OpCode::Mov,
                                                       .imm64  = (u64)literal_token.num,
-                                                      .dreg   = GetReg(current_table.GetUsedRegisters()++) });
+                                                      .dreg   = GetReg(current_table.GetUsedRegisters()++) }, literal);
                 break;
             }
             case String: {
-                auto offset = current_table.GetOffset();
-                for (char c : literal_token.span.text)
+                auto& pool = m_CompiledCode.GetStringPool();
+                if (!pool.contains(literal_token.span.text))
                 {
-                    m_CompiledCode.push_back(
-                        Instruction{ .opcode = OpCode::Push, .imm64 = (u64)c, .size = (i8)(Type::Character.size / 8) });
-                    offset += Type::Character.size / 8;
+                    pool[literal_token.span.text] = pool.size();
+                    for (unsigned char c : literal_token.span.text)
+                    {
+                        m_CompiledCode << c;
+                    }
                 }
-                m_CompiledCode.push_back(
-                    Instruction{ .opcode = OpCode::Push, .imm64 = 0, .size = (i8)(Type::Character.size / 8) });
+                m_CompiledCode << MakeInst(
+                    { .opcode = OpCode::Lea, .sreg = RegType::DS, .dreg = GetReg(current_table.GetUsedRegisters()++), .disp = (i32)pool[literal_token.span.text] },
+                    literal);
                 break;
             }
 
@@ -294,15 +289,15 @@ namespace relang::refront {
         if (fnCall.name == "printi64")
         {
             CompileFunctionArgumentList(fnCall.children[0]);
-            m_CompiledCode.push_back(
-                Instruction{ .opcode = OpCode::PInt, .sreg = GetReg(--current_table.GetUsedRegisters()) });
+            m_CompiledCode << MakeInst(
+                { .opcode = OpCode::PInt, .sreg = GetReg(--current_table.GetUsedRegisters()) }, fnCall);
             return;
         }
         else if (fnCall.name == "printstr")
         {
             CompileFunctionArgumentList(fnCall.children[0]);
-            m_CompiledCode.push_back(
-                Instruction{ .opcode = OpCode::PStr, .sreg = GetReg(--current_table.GetUsedRegisters()) });
+            m_CompiledCode << MakeInst(
+                { .opcode = OpCode::PStr, .sreg = GetReg(--current_table.GetUsedRegisters()) }, fnCall);
             return;
         }
 
@@ -310,7 +305,7 @@ namespace relang::refront {
         {
             if (fn.name == fnCall.name)
             {
-                m_CompiledCode.push_back(Instruction{ .opcode = OpCode::Call, .imm64 = fn.address });
+                m_CompiledCode << MakeInst({ .opcode = OpCode::Call, .imm64 = fn.address }, fnCall);
                 for (const auto& arg : fnCall.children[0].children)
                 {
                     CompileExpression(arg);
