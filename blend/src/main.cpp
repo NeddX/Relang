@@ -1,6 +1,6 @@
 #include <sdafx.h>
 
-#include "../include/BLEND.h"
+#include "../include/Blend.h"
 
 using namespace relang;
 using namespace relang::blend;

@@ -65,27 +65,27 @@ using namespace relang;
     } while (0)
 
 #define Push8(uval8) \
-    m_Sp--;       \
+    m_Sp--;          \
     *(u8*)m_Sp = (u8)(uval8)
 #define Push16(uval16) \
-    m_Sp -= 2;      \
+    m_Sp -= 2;         \
     *(u16*)m_Sp = (u16)(uval16)
 #define Push32(uval32) \
-    m_Sp -= 4;      \
+    m_Sp -= 4;         \
     *(u32*)m_Sp = (u32)(uval32)
 #define Push64(uval64) \
-    m_Sp -= 8;      \
+    m_Sp -= 8;         \
     *(u64*)m_Sp = (u64)(uval64)
-#define Pop8(uval8)               \
+#define Pop8(uval8)     \
     uval8 = *(u8*)m_Sp; \
     m_Sp++
-#define Pop16(uval16)               \
+#define Pop16(uval16)     \
     uval16 = *(u16*)m_Sp; \
     m_Sp += 2
-#define Pop32(uval32)               \
+#define Pop32(uval32)     \
     uval32 = *(u32*)m_Sp; \
     m_Sp += 4
-#define Pop64(uval64)               \
+#define Pop64(uval64)     \
     uval64 = *(u64*)m_Sp; \
     m_Sp += 8
 #define Pop8s() \
@@ -114,9 +114,10 @@ using namespace relang;
     *((u64*)(addr)) = (u64)(uval64)
 
 #define RegDeref(reg) \
-    reg & RegType::DPTR
+    reg& RegType::DPTR
 
-namespace relang::blend {
+namespace relang::blend
+{
     Blend::Blend(const std::vector<u8>& data, const usize bssSize)
         : m_Stack(data), m_Sp(m_Registers[RegType::SP]), m_BssSize(bssSize)
     {
@@ -456,11 +457,11 @@ namespace relang::blend {
     {
         if (m_Pc->sreg != RegType::NUL)
         {
-            std::printf("%lu", m_Registers[m_Pc->sreg]);
+            std::printf("%lu\n", m_Registers[m_Pc->sreg]);
         }
         else
         {
-            std::printf("%lu", m_Pc->imm64);
+            std::printf("%lu\n", m_Pc->imm64);
         }
         m_Pc++;
     }
@@ -993,11 +994,11 @@ namespace relang::blend {
     {
         if (m_Pc->imm64)
         {
-            //utils::gterm::set_conio_terminal_mode();
+            // utils::gterm::set_conio_terminal_mode();
         }
         else
         {
-            //utils::gterm::reset_terminal_mode();
+            // utils::gterm::reset_terminal_mode();
         }
         m_Pc++;
     }

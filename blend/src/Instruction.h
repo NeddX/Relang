@@ -5,10 +5,11 @@
 
 #include "Register.h"
 
-namespace relang::blend {
+namespace relang::blend
+{
     struct OpCode
     {
-        enum : u8
+        enum Enum : u8
         {
             End,
             Push,
@@ -77,16 +78,16 @@ namespace relang::blend {
         };
 
     private:
-        u8 m_Enum = Nop;
+        Enum m_Enum = Nop;
 
     public:
         constexpr OpCode(const u8 type) noexcept
-            : m_Enum(type){};
+            : m_Enum((Enum)type){};
 
     public:
         constexpr OpCode& operator=(const u8 type) noexcept
         {
-            m_Enum = type;
+            m_Enum = (Enum)type;
             return *this;
         }
         constexpr operator u8() const noexcept
@@ -94,7 +95,6 @@ namespace relang::blend {
             return m_Enum;
         }
     };
-    
 
     struct Instruction
     {
@@ -106,6 +106,12 @@ namespace relang::blend {
         i32 disp = 0;
         RegType src_reg = RegType::NUL;
         i8 size = 64;
+
+    public:
+        friend std::ostream& operator<<(std::ostream& stream, const Instruction& inst) noexcept
+        {
+            return stream;
+        }
 
     public:
         inline static const std::vector<std::string> InstructionStr =
@@ -174,6 +180,7 @@ namespace relang::blend {
     };
 
     using InstructionList = std::vector<Instruction>;
+
 } // namespace relang::blend
 
 #endif // BLEND_INSTRUCTION_H

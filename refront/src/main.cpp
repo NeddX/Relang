@@ -174,12 +174,11 @@ void DumpIntermediate(const relang::blend::InstructionList& code, const std::opt
                         {
                             std::cout << std::hex << ((inst.disp < 0) ? "-$0x" : "+$0x") << std::abs(inst.disp);
                         }
-                        
+
                         RegType a = inst.sreg & relang::blend::RegType::DPTR;
 
-                        std::cout
-                            << "(%"
-                            << relang::blend::Register::RegisterStr[inst.sreg & relang::blend::RegType::DPTR];
+                        std::cout << "(%"
+                                  << relang::blend::Register::RegisterStr[inst.sreg & relang::blend::RegType::DPTR];
                         if (inst.src_reg != relang::blend::RegType::NUL)
                         {
                             std::cout << ", %" << relang::blend::Register::RegisterStr[inst.src_reg];
@@ -205,9 +204,7 @@ void DumpIntermediate(const relang::blend::InstructionList& code, const std::opt
                     {
                         std::cout << std::hex << ((inst.disp < 0) ? "-$0x" : "+$0x") << std::abs(inst.disp);
                     }
-                    std::cout
-                        << "(%"
-                        << relang::blend::Register::RegisterStr[inst.dreg & relang::blend::RegType::DPTR];
+                    std::cout << "(%" << relang::blend::Register::RegisterStr[inst.dreg & relang::blend::RegType::DPTR];
                     if (inst.src_reg != relang::blend::RegType::NUL)
                     {
                         std::cout << ", %" << relang::blend::Register::RegisterStr[inst.src_reg];
@@ -230,9 +227,8 @@ void DumpIntermediate(const relang::blend::InstructionList& code, const std::opt
                         {
                             std::cout << std::hex << ((inst.disp < 0) ? "-$0x" : "+$0x") << std::abs(inst.disp);
                         }
-                        std::cout
-                            << "(%"
-                            << relang::blend::Register::RegisterStr[inst.sreg & relang::blend::RegType::DPTR];
+                        std::cout << "(%"
+                                  << relang::blend::Register::RegisterStr[inst.sreg & relang::blend::RegType::DPTR];
                         if (inst.src_reg != relang::blend::RegType::NUL)
                         {
                             std::cout << ", %" << relang::blend::Register::RegisterStr[inst.src_reg];
@@ -278,7 +274,6 @@ void DumpIntermediate(const relang::blend::InstructionList& code, const std::opt
     }
 }
 
-
 int main(int argc, const char* argv[])
 {
     if (argc > 1)
@@ -296,6 +291,7 @@ int main(int argc, const char* argv[])
             auto compiler      = Compiler(tree);
             auto compiled_code = compiler.Compile();
 
+            std::cout << std::endl;
             DumpIntermediate(compiled_code, std::nullopt);
             std::cout << std::endl;
 

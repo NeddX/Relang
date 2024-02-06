@@ -3,10 +3,12 @@
 
 #include <sdafx.h>
 
-namespace relang::blend {
+namespace relang::blend
+{
     struct RegType
     {
-        enum : u8 {
+        enum Enum : u8
+        {
             // General purpose
             R0,
             R1,
@@ -66,16 +68,18 @@ namespace relang::blend {
         };
 
     private:
-        u8 m_Enum = NUL;
+        Enum m_Enum = NUL;
 
     public:
         constexpr RegType(const u8 type) noexcept
-            : m_Enum(type){}
-    
+            : m_Enum((Enum)type)
+        {
+        }
+
     public:
         constexpr RegType& operator=(const u8 type) noexcept
         {
-            m_Enum = type;
+            m_Enum = (Enum)type;
             return *this;
         }
         constexpr operator u8() const noexcept

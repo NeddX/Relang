@@ -82,8 +82,13 @@ namespace relang::refront {
     {
         m_SymbolTableStack.push_back(SymbolTable{});
 
+        auto& current_table = m_SymbolTableStack.back();
+
         m_CompiledCode << MakeInst({ .opcode = OpCode::Push, .sreg = RegType::BP }, block);
         m_CompiledCode << MakeInst({ .opcode = OpCode::Mov, .sreg = RegType::SP, .dreg = RegType::BP }, block);
+
+        auto pos = m_CompiledCode.GetSize();
+
         // m_CompiledCode << MakeInst({ .opcode = OpCode::Pushar }, block);
 
         for (const auto& s : block.children)
@@ -94,9 +99,14 @@ namespace relang::refront {
 
                 case VariableDeclaration: CompileVariableDeclaration(s); break;
                 case FunctionCallExpression: CompileFunctionCall(s); break;
+                case WhileStatement: CompileWhileStatement(s); break;
                 default: break;
             }
         }
+
+        m_CompiledCode.InsertAt(
+            pos,
+            MakeInst({ .opcode = OpCode::Sub, .imm64 = (u64)current_table.GetOffset(), .dreg = RegType::SP }, block));
 
         m_SymbolTableStack.pop_back();
         // m_CompiledCode << MakeInst({ .opcode = OpCode::Popar }, block);
@@ -155,9 +165,10 @@ namespace relang::refront {
                 case Integer32:
                 case Integer64:
                     m_CompiledCode << MakeInst({ .opcode = OpCode::Store,
-                                                          .dreg   = MemReg(RegType::BP),
-                                                          .disp   = current_table.GetOffset(),
-                                                          .size   = (i8)var.type.size }, var);
+                                                 .dreg   = MemReg(RegType::BP),
+                                                 .disp   = current_table.GetOffset(),
+                                                 .size   = (i8)var.type.size },
+                                               var);
                     break;
                 // FIXME: Uninitilized strings do not allocate space.
                 case String: break;
@@ -208,17 +219,17 @@ namespace relang::refront {
                 auto&      used_regs = current_table.GetUsedRegisters();
                 const auto op_code   = (expr.kind == DivisionExpression) ? OpCode::Div : OpCode::Mul;
                 m_CompiledCode << MakeInst(
-                   { .opcode = op_code, .sreg = GetReg(--used_regs), .dreg = GetReg(used_regs - 1) }, expr);
+                    { .opcode = op_code, .sreg = GetReg(--used_regs), .dreg = GetReg(used_regs - 1) }, expr);
                 break;
             }
 
             case IdentifierName: {
                 auto& sym = m_SymbolTableStack.back().GetSymbol(expr.name);
-                    m_CompiledCode << MakeInst({ .opcode = OpCode::Load,
-                                                 .sreg   = MemReg(RegType::BP),
-                                                 .dreg   = GetReg(current_table.GetUsedRegisters()++),
-                                                 .disp   = sym.address },
-                                               expr);
+                m_CompiledCode << MakeInst({ .opcode = OpCode::Load,
+                                             .sreg   = MemReg(RegType::BP),
+                                             .dreg   = GetReg(current_table.GetUsedRegisters()++),
+                                             .disp   = sym.address },
+                                           expr);
                 break;
             }
             default: break;
@@ -244,8 +255,9 @@ namespace relang::refront {
             case Integer32:
             case Integer64: {
                 m_CompiledCode << MakeInst({ .opcode = OpCode::Mov,
-                                                      .imm64  = (u64)literal_token.num,
-                                                      .dreg   = GetReg(current_table.GetUsedRegisters()++) }, literal);
+                                             .imm64  = (u64)literal_token.num,
+                                             .dreg   = GetReg(current_table.GetUsedRegisters()++) },
+                                           literal);
                 break;
             }
             case String: {
@@ -258,9 +270,11 @@ namespace relang::refront {
                         m_CompiledCode << c;
                     }
                 }
-                m_CompiledCode << MakeInst(
-                    { .opcode = OpCode::Lea, .sreg = RegType::DS, .dreg = GetReg(current_table.GetUsedRegisters()++), .disp = (i32)pool[literal_token.span.text] },
-                    literal);
+                m_CompiledCode << MakeInst({ .opcode = OpCode::Lea,
+                                             .sreg   = RegType::DS,
+                                             .dreg   = GetReg(current_table.GetUsedRegisters()++),
+                                             .disp   = (i32)pool[literal_token.span.text] },
+                                           literal);
                 break;
             }
 
@@ -289,15 +303,15 @@ namespace relang::refront {
         if (fnCall.name == "printi64")
         {
             CompileFunctionArgumentList(fnCall.children[0]);
-            m_CompiledCode << MakeInst(
-                { .opcode = OpCode::PInt, .sreg = GetReg(--current_table.GetUsedRegisters()) }, fnCall);
+            m_CompiledCode << MakeInst({ .opcode = OpCode::PInt, .sreg = GetReg(--current_table.GetUsedRegisters()) },
+                                       fnCall);
             return;
         }
         else if (fnCall.name == "printstr")
         {
             CompileFunctionArgumentList(fnCall.children[0]);
-            m_CompiledCode << MakeInst(
-                { .opcode = OpCode::PStr, .sreg = GetReg(--current_table.GetUsedRegisters()) }, fnCall);
+            m_CompiledCode << MakeInst({ .opcode = OpCode::PStr, .sreg = GetReg(--current_table.GetUsedRegisters()) },
+                                       fnCall);
             return;
         }
 
@@ -320,5 +334,9 @@ namespace relang::refront {
         {
             CompileExpression(arg);
         }
+    }
+
+    void Compiler::CompileWhileStatement(const ast::Statement& whst)
+    {
     }
 } // namespace relang::refront

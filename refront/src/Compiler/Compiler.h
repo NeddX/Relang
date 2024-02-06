@@ -58,35 +58,43 @@ namespace relang::refront {
             std::vector<std::pair<blend::Instruction, ast::Statement>> m_Code{};
             std::vector<u8>                                            m_Data{};
             usize                                                      m_BssSize{};
-                StringPool                   m_StringPool{};
+            StringPool                                                 m_StringPool{};
 
         public:
+            inline usize                  GetSize() const noexcept { return m_Code.size(); }
             inline const std::vector<u8>& GetDataSection() const noexcept { return m_Data; }
             inline usize                  GetBssSize() const noexcept { return m_BssSize; }
             inline StringPool&            GetStringPool() noexcept { return m_StringPool; }
             inline const StringPool&      GetStringPool() const noexcept { return m_StringPool; }
 
         public:
-            inline CompiledCode& operator<<(std::pair<blend::Instruction,ast::Statement> inst) noexcept
+            inline CompiledCode& InsertAt(const usize                                   index,
+                                          std::pair<blend::Instruction, ast::Statement> inst) noexcept
+            {
+                m_Code.insert(m_Code.begin() + index, std::move(inst));
+                return *this;
+            }
+            inline CompiledCode& operator<<(std::pair<blend::Instruction, ast::Statement> inst) noexcept
             {
                 m_Code.push_back(std::move(inst));
                 return *this;
             }
-            inline CompiledCode& operator<<(const u8 byte) noexcept { 
+            inline CompiledCode& operator<<(const u8 byte) noexcept
+            {
                 m_Data.push_back(byte);
                 return *this;
             }
             inline operator blend::InstructionList() const noexcept
-            { 
+            {
                 blend::InstructionList list{};
                 for (const auto& e : m_Code)
                     list.push_back(e.first);
                 return list;
             }
         };
-        
+
         std::pair<blend::Instruction, ast::Statement> MakeInst(const blend::Instruction& inst = blend::Instruction{},
-                                                               const ast::Statement&     stmt = ast::Statement{}) noexcept;
+                                                               const ast::Statement& stmt = ast::Statement{}) noexcept;
     } // namespace codegen
 
     class Compiler
@@ -102,16 +110,17 @@ namespace relang::refront {
 
     public:
         codegen::CompiledCode Compile();
-        void                         CompileFunctionBody(const ast::Statement& fnStmt);
-        void                         CompileBlockStatement(const ast::Statement& block);
-        void                         CompileVariableDeclaration(const ast::Statement& var);
-        void                         CompileInitializer(const ast::Statement& init);
-        void                         CompileExpression(const ast::Statement& expr);
-        void                         CompileLiteral(const ast::Statement& literal);
-        void                         CompileInitializerList(const ast::Statement& initList);
-        void                         CompileFunctionCall(const ast::Statement& fnCall);
-        void                         CompileIdentifierName(const ast::Statement& ident);
-        void                         CompileFunctionArgumentList(const ast::Statement& args);
+        void                  CompileFunctionBody(const ast::Statement& fnStmt);
+        void                  CompileBlockStatement(const ast::Statement& block);
+        void                  CompileVariableDeclaration(const ast::Statement& var);
+        void                  CompileInitializer(const ast::Statement& init);
+        void                  CompileExpression(const ast::Statement& expr);
+        void                  CompileLiteral(const ast::Statement& literal);
+        void                  CompileInitializerList(const ast::Statement& initList);
+        void                  CompileFunctionCall(const ast::Statement& fnCall);
+        void                  CompileIdentifierName(const ast::Statement& ident);
+        void                  CompileFunctionArgumentList(const ast::Statement& args);
+        void                  CompileWhileStatement(const ast::Statement& whst);
     };
 } // namespace relang::refront
 
