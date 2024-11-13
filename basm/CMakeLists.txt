@@ -23,6 +23,9 @@ target_include_directories(basm-static PRIVATE blend-static)
 # Make the base include file public
 target_include_directories(basm-static PUBLIC include/)
 
+install(TARGETS basm DESTINATION bin/)
+install(TARGETS basm-static DESTINATION lib/)
+
 # Add the precompiled header
 #target_include_directories(basm-static PUBLIC pch/)
 #target_precompile_headers(basm-static PRIVATE pch/sdafx.h)

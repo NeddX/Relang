@@ -16,6 +16,9 @@ set_property(TARGET blend PROPERTY CXX_STANDARD 20)
 target_include_directories(blend-static PUBLIC include/)
 # target_include_directories(blend-static-lib PUBLIC include/)
 
+install(TARGETS blend DESTINATION bin/)
+install(TARGETS blend-static DESTINATION lib/)
+
 # Add the precompiled header
 target_include_directories(blend-static PUBLIC pch/)
 target_include_directories(blend PUBLIC pch/)

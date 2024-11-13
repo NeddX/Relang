@@ -130,7 +130,7 @@ if action == Action.Build:
             Chrono.begin()
 
             if platform.system() in ['Linux', 'Darwin']:
-                res = run(f'sudo cmake --install builds/{preset}', stdout=stdoutput)
+                res = run(f'cmake --install builds/{preset}', stdout=stdoutput)
             elif platform.system() == 'Windows':
                 panic("I haven't figured out how to ask for admin privileges on python for windows yet")
 

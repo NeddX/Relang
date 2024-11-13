@@ -57,7 +57,7 @@ namespace relang::basm {
         m_BssSize = 0;
     }
 
-    void Assembler::LabelProcessor(const TokenList& tokens)
+    void Assembler::LabelProcessor(TokenList& tokens)
     {
         // Pre proccess the source code.
         usize inst_count = 0;
@@ -78,6 +78,29 @@ namespace relang::basm {
                 {
                     data_section = true;
                     i += 4;
+                }
+                // Include directive.
+                else if (tokens[i].type == TokenType::Operator &&
+                         tokens[i].text == "." &&
+                         tokens[i + 1].type == TokenType::Identifier &&
+                         tokens[i + 1].text == "include" &&
+                         tokens[i + 2].type == TokenType::StringLiteral)
+                {
+                    std::ifstream fs(tokens[i + 2].text);
+                    if (fs.is_open())
+                    {
+                        std::string src_code = std::string(std::istreambuf_iterator<char>(fs), std::istreambuf_iterator<char>());
+                        auto tk_list = relang::basm::Lexer::Start(src_code);
+                        tokens.insert(tokens.begin() + i + 2, tk_list.begin(), tk_list.end());
+                        tokens.erase(tokens.begin() + i, tokens.begin() + 2);
+                    }
+                    else
+                    {
+                        std::cerr << "Preproccess Error @ line (" << tokens[i].line << ", " << tokens[i].cur << "): "
+                                  << "File not found."
+                                  << std::endl;
+                        std::exit(-2);
+                    }
                 }
                 continue;
             }
@@ -155,10 +178,10 @@ namespace relang::basm {
         return AssemblerStatus::Ok;
     }
 
-    AssemblerResult Assembler::Assemble(const AssemblerOptions& opt)
+    AssemblerResult Assembler::Assemble(AssemblerOptions& opt)
     {
         AssemblerResult res;
-        res.status = CodeGen(opt.tokens);
+        res.status = CodeGen(const_cast<std::vector<Token>&>(opt.tokens));
         if (res.status == AssemblerStatus::Ok)
         {
             res.assembledCode = m_AssembledCode;
@@ -177,7 +200,7 @@ namespace relang::basm {
         return res;
     }
 
-    AssemblerStatus Assembler::CodeGen(const TokenList& tokens)
+    AssemblerStatus Assembler::CodeGen(TokenList& tokens)
     {
         Cleanup();
         LabelProcessor(tokens);

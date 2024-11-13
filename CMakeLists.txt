@@ -23,5 +23,5 @@ add_custom_target(copy_compile_commands ALL
 # Sub projects
 add_subdirectory("blend")
 add_subdirectory("basm")
-add_subdirectory("refront")
+#add_subdirectory("refront")
 #add_subdirectory("alcc")

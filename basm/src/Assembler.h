@@ -74,15 +74,15 @@ namespace relang::basm
         static std::string m_CurrentSection;
 
     private:
-        static void LabelProcessor(const TokenList& tokens);
+        static void LabelProcessor(TokenList& tokens);
         static void Cleanup();
         static AssemblerStatus WriteToBinary(const std::string& path);
 
     public:
-        static AssemblerResult Assemble(const AssemblerOptions& opt);
+        static AssemblerResult Assemble(AssemblerOptions& opt);
 
     private:
-        static AssemblerStatus CodeGen(const TokenList& tokens);
+        static AssemblerStatus CodeGen(TokenList& tokens);
         static blend::OpCode GetInst(std::string inst);
         static blend::RegType GetReg(std::string reg);
     };
